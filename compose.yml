@@ -1,0 +1,19 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: icsv
+      POSTGRES_USER: icsv
+      POSTGRES_PASSWORD: ${ICSV_POSTGRES_PASSWORD:-icsv_local}
+    ports:
+      - "127.0.0.1:${ICSV_POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U icsv -d icsv"]
+      interval: 3s
+      timeout: 3s
+      retries: 15
+
+volumes:
+  postgres-data:

@@ -1,0 +1,11 @@
+# Decisões técnicas
+
+- **Monólito modular.** Next.js com App Router, React, TypeScript e Tailwind CSS. O domínio compartilhado descreve operações e dados que a interface e os serviços consomem. O acesso ao PostgreSQL permanece no servidor.
+- **PostgreSQL como armazenamento principal.** O fluxo local usa PostgreSQL via Docker. A conexão usa `DATABASE_URL`, o que permite configurar futuramente um PostgreSQL gerenciado, como o Supabase. As migrações acompanham o repositório.
+- **Desenvolvimento isolado.** Use dados fictícios e um banco dedicado aos testes de ponta a ponta. O GitHub Actions prepara a própria instância de PostgreSQL para executar o pipeline.
+- **Idioma e identidade.** Interface em português brasileiro, paleta do briefing e fontes Oswald e Nunito Sans servidas pela aplicação. O ícone do programa representa uma igreja de maneira genérica.
+- **Cadastros centrais.** PostgreSQL armazena os registros em `icsv_records` com campos de domínio em JSONB. `icsv_record_links` controla o tipo e a existência dos vínculos por chave estrangeira. Os serviços validam o escopo da congregação, as referências e as regras de negócio. Alterações relacionadas a escalas são transacionais.
+- **Acesso administrativo.** As senhas ficam armazenadas como hash scrypt com sal. O servidor mantém sessões com tokens aleatórios armazenados como hash. Os perfis são configuráveis, com escopo de campo ou de uma congregação. A recuperação usa um código administrativo de uso único, entregue por um canal externo.
+- **Recorrência.** Séries semanais, quinzenais ou mensais são expandidas para o calendário e para a verificação de conflitos. Inscrições e escalas referenciam a série. A hora de Brasília (UTC−03:00 nesta versão) é usada quando o horário não informa um offset. A repetição mensal ajusta datas inexistentes para o último dia do mês.
+- **Indicadores.** O painel e os relatórios respeitam a permissão de consulta de cada recurso. Filtros de período se aplicam às movimentações e atividades, incluindo séries com uma ocorrência no intervalo. Cadastros e projetos refletem a posição atual.
+- **Comprovantes.** Anexos PDF, PNG e JPEG de até 5 MiB ficam no PostgreSQL e são baixados por rota autenticada. Upload e gravação da movimentação são operações separadas. Anexos de cadastros abandonados podem precisar de limpeza administrativa futura.

@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: light;
+  --teal: #006666;
+  --beige: #f2da94;
+  --mustard: #bf7e06;
+  --muted-lines: #d3d3d3;
+  --ink: #1a1918;
+  --font-heading: "Oswald", "Arial Narrow", sans-serif;
+  --font-body: "Nunito Sans", system-ui, sans-serif;
+}
+
+body {
+  margin: 0;
+  color: var(--ink);
+  background: #f6f7f4;
+  font-family: var(--font-body);
+  font-synthesis: none;
+}
+
+button:not(:disabled) {
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 3px;
+}
+
+.marca {
+  display: inline-flex;
+  align-items: center;
+  gap: .7rem;
+  vertical-align: middle;
+}
+
+.marca-simbolo {
+  display: grid;
+  width: 2.5rem;
+  height: 2.5rem;
+  place-items: center;
+  border-radius: .75rem;
+  color: #005b53;
+  background: var(--beige);
+}
+
+.marca-nome {
+  display: flex;
+  flex-direction: column;
+  gap: .1rem;
+  line-height: 1.15;
+}
+
+.marca-nome strong {
+  font-family: var(--font-heading);
+  font-size: 1.3rem;
+  font-weight: 600;
+}
+
+.marca-nome small {
+  font-size: .79rem;
+}

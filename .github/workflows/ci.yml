@@ -1,0 +1,65 @@
+name: Verificação do ICSV Gestão
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://icsv:icsv@127.0.0.1:5432/icsv_test
+      PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
+      NEXT_TELEMETRY_DISABLED: '1'
+      SESSION_COOKIE_SECURE: 'false'
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: icsv
+          POSTGRES_PASSWORD: icsv
+          POSTGRES_DB: icsv_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U icsv -d icsv_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run db:migrate
+      - run: npm run db:seed
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - name: Verificar os fluxos de ponta a ponta
+        run: |
+          npm run start -- --hostname 127.0.0.1 > /tmp/icsv-server.log 2>&1 &
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:3000/login > /dev/null; then
+              npm run test:e2e
+              exit "$?"
+            fi
+            sleep 1
+          done
+          cat /tmp/icsv-server.log
+          exit 1
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: diagnostico-playwright
+          path: |
+            playwright-report
+            test-results
+            /tmp/icsv-server.log
+          if-no-files-found: ignore

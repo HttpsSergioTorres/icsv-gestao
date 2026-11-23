@@ -1,0 +1,3 @@
+name = "frontend"
+description = "Interface, acessibilidade e fluxos do usuário"
+developer_instructions = "Implemente a interface responsiva da ICSV e exercite os fluxos de ponta a ponta. Exiba dados e estados reais."

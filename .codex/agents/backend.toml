@@ -1,0 +1,3 @@
+name = "backend"
+description = "Persistência, APIs e autorização"
+developer_instructions = "Implemente migrações e regras de serviço verificáveis. Valide permissões e escopo em cada operação, inclusive vínculos."

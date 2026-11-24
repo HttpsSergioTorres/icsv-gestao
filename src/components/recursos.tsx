@@ -1,11 +1,13 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useId, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
-import { ArrowDownToLine, CalendarDays, CircleHelp, History, KeyRound, Pencil, Plus, Search, X } from 'lucide-react'
+import { useEffect, useId, useMemo, useState, type FormEvent } from 'react'
+import { ArrowDownToLine, CalendarDays, CircleHelp, History, KeyRound, Pencil, Plus, Search } from 'lucide-react'
 import { resources, type Field, type ResourceName } from '@/lib/domain/resources'
 import { api, downloadCsv, formatDate, formatDateTime, messageOf, money, write, type RecordItem } from './client-api'
 import { AccessDenied, useSession } from './gestao-shell'
+import { LinkChamada } from './link-chamada'
+import { Modal } from './modal'
 import { Empty, LoadError, Loading, PageHeading } from './painel'
 
 type Options = Partial<Record<ResourceName, RecordItem[]>>
@@ -103,23 +105,6 @@ function useRecords(resource: ResourceName, allowed: boolean) {
   }, [allowed, attempt, definition, resource, user.permissions])
 
   return { items, options, error, reload }
-}
-
-function Modal({ title, children, close }: { title: string; children: ReactNode; close: () => void }) {
-  const ref = useRef<HTMLDialogElement>(null)
-  const heading = useId()
-  useEffect(() => {
-    const dialog = ref.current
-    dialog?.showModal()
-    return () => dialog?.close()
-  }, [])
-
-  return <dialog className="modal" ref={ref} aria-labelledby={heading} onCancel={(event) => { event.preventDefault(); close() }}>
-    <div className="modal-content">
-      <header><h2 id={heading}>{title}</h2><button type="button" className="icon-button" aria-label="Fechar" onClick={close}><X size={20} /></button></header>
-      {children}
-    </div>
-  </dialog>
 }
 
 function optionsFor(field: Field, options: Options, values: FormValues) {
@@ -221,6 +206,8 @@ function RegistroEditor({ resource, editor, options, filters, close, finish }: {
   const definition = resources[resource]
   const item = editor.item
   const create = editor.mode === 'create'
+  const ownAccount = resource === 'usuarios' && item?.id === user.id
+  const editableFields = ownAccount ? definition.fields.filter((field) => field.key !== 'senha') : definition.fields
   const [values, setValues] = useState<FormValues>(() => initialValues(resource, item, filters, user.congregacaoId))
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -233,7 +220,7 @@ function RegistroEditor({ resource, editor, options, filters, close, finish }: {
     setBusy(true)
     setError('')
     try {
-      const payload = editorPayload(resource, definition.fields, values, create)
+      const payload = editorPayload(resource, editableFields, values, create)
       if (receipt) {
         if (!values.congregacaoId) throw new Error('Selecione a congregação do comprovante.')
         if (receiptUrl && receiptScope === values.congregacaoId) {
@@ -273,9 +260,10 @@ function RegistroEditor({ resource, editor, options, filters, close, finish }: {
   return <Modal title={editor.mode === 'view' ? definition.singular : `${create ? 'Cadastrar' : 'Editar'} ${definition.singular.toLowerCase()}`} close={() => { if (!busy) close() }}>
     {editor.mode === 'view' && item ? <Details item={item} resource={resource} options={options} /> : <form onSubmit={save}>
       <div className="editor-grid">
-        {definition.fields.filter((field) => field.key !== 'recorrenciaAte' || values.recorrencia !== 'nenhuma').map((field) => (
+        {editableFields.filter((field) => field.key !== 'recorrenciaAte' || values.recorrencia !== 'nenhuma').map((field) => (
           <FieldInput key={field.key} field={field} value={values[field.key]} options={options} values={values} create={create} change={(value) => change(field.key, value)} />
         ))}
+        {ownAccount && <Link href="/minha-conta" className="text-link full-field"><KeyRound size={15} aria-hidden="true" />Alterar senha em Minha conta</Link>}
         {resource === 'movimentacoes' && <label className="full-field">Anexar comprovante
           <input type="file" accept="application/pdf,image/png,image/jpeg" onChange={(event) => { setReceipt(event.target.files?.[0]); setReceiptUrl(undefined) }} />
           <small>PDF, JPEG ou PNG de até 5 MB.</small>
@@ -550,6 +538,7 @@ export function Recursos({ resource, initialFilters, initialEdit, startNew }: {
                     {(resource === 'pessoas' || resource === 'movimentacoes') && <button className="small-action" type="button" onClick={() => setAction({ type: 'history', item })}><History size={14} />Histórico</button>}
                     {resource === 'usuarios' && permissions.write && item.ativo !== false && <button className="small-action" type="button" onClick={() => setAction({ type: 'recovery', item })}><KeyRound size={14} />Recuperar acesso</button>}
                     {resource === 'escalas' && permissions.write && item.status !== 'substituida' && <button className="small-action" type="button" onClick={() => setAction({ type: 'replace', item })}>Substituir</button>}
+                    {resource === 'eventos' && <LinkChamada id={item.id} cancelado={item.status === 'cancelado'} className="small-action" />}
                     {nested.map((link) => <Link className="small-action" key={link.resource} href={queryLink(link.resource, link.key, item.id)}>{link.label}</Link>)}
                   </div></td>
                 </tr>

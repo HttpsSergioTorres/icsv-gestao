@@ -5,11 +5,11 @@ A primeira versão local foi implementada a partir do briefing do ICSV Gestão. 
 | Módulo | Implementação disponível |
 | --- | --- |
 | 1. Estrutura e dashboard | Navegação responsiva, estados da interface, indicadores obtidos do PostgreSQL e próximos eventos a partir da agenda. |
-| 2. Usuários e perfis | Login, logout, código de recuperação, cadastro administrativo, perfis configuráveis, permissões e escopo de congregação. |
+| 2. Usuários e perfis | Login, logout, troca da própria senha, código de recuperação, criação da primeira conta em base vazia, cadastro administrativo, perfis configuráveis e escopo de congregação. |
 | 3. Congregações | Cadastro, edição, ativação e desativação, CNPJ opcional, associação de lideranças e acesso às listas de membros e ministérios. |
 | 4. Pessoas | Cadastro central para membros, visitantes, lideranças e voluntários, busca, situação, vínculos, autorizações, histórico e CSV. |
 | 5. Ministérios | Ministérios e departamentos editáveis, líderes, equipes e situação. |
-| 6. Agenda e eventos | Calendário mensal e semanal, filtros, recorrência, situação das atividades, inscrições e presença. |
+| 6. Agenda e eventos | Calendário mensal e semanal, filtros, recorrência, situação das atividades, inscrições e chamada em lote com revisão das presenças e ausências. |
 | 7. Escalas | Tipos de serviço, escala por evento e ministério, consulta por pessoa, confirmação, conflito, substituição e histórico dos registros. |
 | 8. Financeiro | Receitas e despesas por congregação, categorias, eventos, comprovantes, resumo por período, consolidação e CSV. |
 | 9. Projetos e tarefas | Projetos e tarefas associados, responsáveis, prazos, vínculos com atividades, situação e progresso. |

@@ -160,6 +160,14 @@
 .agenda-event-link:hover { text-decoration: underline; }
 .agenda-event-name svg { display: inline; vertical-align: middle; }
 
+.agenda-event-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: .35rem;
+}
+
 @media (max-width: 650px) {
   .agenda-toolbar h2 { width: 100%; order: 3; }
   .agenda-day { padding: .28rem; min-height: 3.5rem; }
@@ -167,6 +175,6 @@
   .agenda-day .agenda-chip-cancelado { background: #cc7474; }
   .agenda-day .agenda-chip-agendado { background: #4f9b82; }
   .agenda-day .agenda-chip-realizado { background: #829897; }
-  .agenda-events li { grid-template-columns: minmax(0, 1fr) auto; }
-  .agenda-event-time { grid-column: 1 / -1; }
+  .agenda-events li { grid-template-columns: minmax(0, 1fr); gap: .35rem; }
+  .agenda-event-actions { justify-content: flex-start; }
 }

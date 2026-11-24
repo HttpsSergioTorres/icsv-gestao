@@ -54,7 +54,27 @@ O exemplo de ambiente usa a instância local de PostgreSQL 17. Para usar outro P
 
 A emissão de código de recuperação é feita por um administrador autorizado na tela de usuários. O administrador entrega o código por um canal seguro, e o usuário define a nova senha em **Recuperar meu acesso**. O código é de uso único e expira em 30 minutos.
 
+Quem já está autenticado pode acessar **Minha conta** no menu do perfil e informar a senha atual para alterá-la. A troca encerra as sessões da conta em todos os dispositivos e invalida códigos de recuperação pendentes.
+
+### Primeira conta em uma base sem dados de demonstração
+
+Com Node.js 24, configure `DATABASE_URL` para a base autorizada e execute `npm run db:migrate`. Depois, no Bash, crie a primeira conta administrativa sem digitar a senha no comando:
+
+```bash
+if IFS= read -rsp 'Senha inicial: ' senha_icsv; then
+  printf '\n'
+  printf '%s\n' "$senha_icsv" | npm run db:criar-admin -- --nome "Nome do administrador" --email "administrador@exemplo.com"
+fi
+unset senha_icsv
+```
+
+O comando exige uma base que ainda não tenha usuários e grava a senha como hash. O seed é reservado a demonstração e testes.
+
 Para executar um build local: `npm run build`, seguido de `npm run start`. A sessão exige HTTPS por padrão no modo de produção. Para um teste isolado servido por HTTP, defina `SESSION_COOKIE_SECURE=false` exclusivamente nesse processo.
+
+## Chamada de atividades
+
+Abra **Registrar presenças** na agenda ou na lista de atividades. Marque somente as pessoas que deseja atualizar, revise a seleção e confirme o lote. A chamada vale para a série inteira em atividades recorrentes. Inscrições canceladas são mantidas para consulta.
 
 ## Organização
 

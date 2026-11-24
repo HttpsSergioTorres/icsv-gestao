@@ -6,7 +6,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import {
   ArrowRight, CalendarDays, ChartNoAxesCombined, ChevronDown, Church, CircleHelp,
   ClipboardList, Clock3, LayoutDashboard, LogOut, Menu, Network, PanelTop,
-  Settings2, ShieldCheck, Tags, Ticket, UserCog, Users, Wallet, X,
+  Settings2, ShieldCheck, Tags, Ticket, UserCog, UserRound, Users, Wallet, X,
 } from 'lucide-react'
 import type { ResourceName } from '@/lib/domain/resources'
 import { api, messageOf, type SessionUser } from './client-api'
@@ -119,7 +119,11 @@ export function GestaoShell({ children }: { children: ReactNode }) {
     </div>
   }
 
-  const currentLink = groups.flatMap(({ links }) => [...links]).find(({ href }) => href === pathname)
+  const inActivities = pathname === '/eventos' || pathname.startsWith('/eventos/')
+  const currentLink = groups.flatMap(({ links }) => [...links]).find(
+    ({ href }) => href === pathname || (href === '/agenda' && inActivities),
+  )
+  const location = pathname === '/minha-conta' ? 'Minha conta' : currentLink?.label ?? 'Registros'
   const initials = user.name.trim().split(/\s+/).slice(0, 2).map((part) => part.charAt(0).toUpperCase()).join('')
 
   return (
@@ -141,7 +145,7 @@ export function GestaoShell({ children }: { children: ReactNode }) {
                 <h2>{title}</h2>
                 <ul>
                   {allowed.map(({ href, label, icon: Icon }) => {
-                    const active = pathname === href || (href === '/agenda' && pathname === '/eventos')
+                    const active = pathname === href || (href === '/agenda' && inActivities)
                     return <li key={href}><Link href={href} aria-current={active ? 'page' : undefined} onClick={() => setOpen(false)}><Icon size={17} strokeWidth={1.8} />{label}</Link></li>
                   })}
                 </ul>
@@ -153,7 +157,7 @@ export function GestaoShell({ children }: { children: ReactNode }) {
           <header className="topbar">
             <div className="topbar-left">
               <button className="icon-button menu-toggle" aria-label="Abrir menu" aria-controls="menu-principal" aria-expanded={open} onClick={() => setOpen(!open)}><Menu size={22} /></button>
-              <span className="topbar-location"><span>Gestão</span><ArrowRight size={13} aria-hidden="true" /><strong>{currentLink?.label ?? 'Registros'}</strong></span>
+              <span className="topbar-location"><span>Gestão</span><ArrowRight size={13} aria-hidden="true" /><strong>{location}</strong></span>
             </div>
             <div className="profile">
               <button className="profile-trigger" type="button" aria-label={`Menu da conta de ${user.name}`} aria-expanded={profileOpen} onClick={() => setProfileOpen(!profileOpen)}>
@@ -163,6 +167,7 @@ export function GestaoShell({ children }: { children: ReactNode }) {
               </button>
               {profileOpen && <div className="profile-popover">
                 <p>{user.email}</p>
+                <Link className="profile-action" href="/minha-conta" onClick={() => setProfileOpen(false)}><UserRound size={16} aria-hidden="true" />Minha conta</Link>
                 <button type="button" className="profile-action" disabled={leaving} onClick={signOut}><LogOut size={16} />{leaving ? 'Saindo…' : 'Sair'}</button>
                 {logoutError && <p role="alert">{logoutError}</p>}
               </div>}

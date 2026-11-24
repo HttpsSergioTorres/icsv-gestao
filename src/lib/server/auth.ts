@@ -122,7 +122,7 @@ function cookieOptions() {
   return { httpOnly: true, sameSite: "lax", secure, path: "/" } as const;
 }
 
-export async function getUser(client?: PoolClient) {
+async function getSessionAccount(client?: PoolClient) {
   const token = (await cookies()).get(sessionCookie)?.value;
   if (!token || !/^[0-9a-f]{64}$/.test(token)) return null;
 
@@ -132,7 +132,12 @@ export async function getUser(client?: PoolClient) {
       WHERE s.user_id = u.id AND s.token_hash = $1 AND s.expires_at > now()
     )
   `, [hashToken(token)]);
-  return rows[0] ? toActor(rows[0]) : null;
+  return rows[0] ?? null;
+}
+
+export async function getUser(client?: PoolClient) {
+  const account = await getSessionAccount(client);
+  return account ? toActor(account) : null;
 }
 
 export async function requireUser(client?: PoolClient) {
@@ -141,7 +146,7 @@ export async function requireUser(client?: PoolClient) {
   return user;
 }
 
-async function trackLogin(email: string) {
+async function trackPasswordAttempt(key: string) {
   const pool = database();
   await pool.query("DELETE FROM icsv_login_attempts WHERE window_start < now() - interval '1 day'");
   const { rows } = await pool.query<{ attempts: number }>(`
@@ -151,14 +156,14 @@ async function trackLogin(email: string) {
       attempts = CASE WHEN a.window_start < now() - interval '1 minute' THEN 1 ELSE a.attempts + 1 END,
       window_start = CASE WHEN a.window_start < now() - interval '1 minute' THEN now() ELSE a.window_start END
     RETURNING attempts
-  `, [hashToken(email)]);
+  `, [hashToken(key)]);
   if (rows[0].attempts > 12) {
     throw new ApiError(429, "Muitas tentativas de acesso. Tente novamente em instantes.");
   }
 }
 
 export async function login(email: string, password: string) {
-  await trackLogin(email);
+  await trackPasswordAttempt(email);
   const { rows } = await database().query<AccountRow>(`
     ${accounts} AND lower(u.data->>'email') = $1
   `, [email]);
@@ -203,6 +208,31 @@ export async function updatePassword(client: PoolClient, id: string, passwordHas
   `, [id, passwordHash]);
   await client.query("DELETE FROM icsv_sessions WHERE user_id = $1", [id]);
   await client.query("DELETE FROM icsv_recovery WHERE user_id = $1", [id]);
+}
+
+export async function changeOwnPassword(currentPassword: string, newPassword: string) {
+  const account = await getSessionAccount();
+  if (!account) throw new ApiError(401, "Entre na sua conta para continuar.");
+
+  const attemptKey = `password-change:${account.id}`;
+  await trackPasswordAttempt(attemptKey);
+  if (!await verifyPassword(currentPassword, account.password_hash)) {
+    throw new ApiError(400, "A senha atual está incorreta.");
+  }
+  if (currentPassword === newPassword) {
+    throw new ApiError(400, "Escolha uma senha diferente da atual.");
+  }
+
+  const passwordHash = await hashPassword(newPassword);
+  await recordTransaction(async (client) => {
+    const current = await getSessionAccount(client);
+    if (current?.id !== account.id || current.password_hash !== account.password_hash) {
+      throw new ApiError(401, "Sua sessão mudou. Entre novamente para continuar.");
+    }
+    await updatePassword(client, account.id, passwordHash);
+    await client.query("DELETE FROM icsv_login_attempts WHERE email_hash = $1", [hashToken(attemptKey)]);
+  });
+  (await cookies()).set(sessionCookie, "", { ...cookieOptions(), maxAge: 0 });
 }
 
 export async function issueRecovery(email: string) {

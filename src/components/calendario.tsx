@@ -6,6 +6,7 @@ import { CalendarDays, ChevronLeft, ChevronRight, List, MapPin } from "lucide-re
 import { expandOccurrences } from "@/lib/domain/occurrences";
 import { api, dateTime, messageOf, type RecordItem } from "./client-api";
 import { AccessDenied, useSession } from "./gestao-shell";
+import { LinkChamada } from "./link-chamada";
 import { Empty, LoadError, Loading, PageHeading } from "./painel";
 
 type Mode = "mes" | "semana";
@@ -217,7 +218,10 @@ export function Calendario() {
                   <strong><Link className="agenda-event-link" href={`/eventos?editar=${item.id}`}>{item.titulo}</Link></strong>
                   <span>{activityLabels[item.tipo] ?? item.tipo}{item.local && <> · <MapPin size={14} aria-hidden="true" /> {item.local}</>}</span>
                 </div>
-                <span className={`agenda-chip agenda-chip-${item.status}`}>{statusLabels[item.status] ?? item.status}</span>
+                <div className="agenda-event-actions">
+                  <span className={`agenda-chip agenda-chip-${item.status}`}>{statusLabels[item.status] ?? item.status}</span>
+                  <LinkChamada id={item.id} cancelado={item.status === "cancelado"} className="small-action" />
+                </div>
               </li>
             ))}
           </ul> : <Empty title="Nenhuma atividade neste dia" />}

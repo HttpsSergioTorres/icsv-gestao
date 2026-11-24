@@ -389,6 +389,9 @@ export async function editRecord(actor: Actor, resource: ResourceName, id: strin
   const patch = getResourceSchema(resource, "patch").parse(input);
   return mutate(resource, async (client, current) => {
     const previous = await findRecord(current, resource, id, client);
+    if (resource === "usuarios" && current.id === previous.id && typeof patch.senha === "string") {
+      throw new ApiError(400, "Altere sua senha em Minha conta.");
+    }
     const merged = getResourceSchema(resource, "record").parse({ ...previous.data, ...patch });
     return save(client, current, resource, previous.id, merged, previous);
   });
@@ -440,5 +443,97 @@ export async function substituteSchedule(actor: Actor, id: string, personId: str
       ...old.data, pessoaId: personId, status: "pendente",
     });
     return save(client, current, "escalas", randomUUID(), data);
+  });
+}
+
+const registrationStatus = z.enum(["inscrito", "confirmado", "presente", "ausente", "cancelado"]);
+const attendanceChanges = z.strictObject({
+  alteracoes: z.array(z.strictObject({
+    id: z.uuid("Identificador de inscrição inválido.").toLowerCase(),
+    statusAnterior: registrationStatus,
+    status: z.enum(["presente", "ausente"]),
+  })).min(1, "Envie pelo menos uma alteração de presença."),
+});
+
+function assertAttendanceRead(actor: Actor) {
+  assertGrant(actor, "eventos:read");
+  assertGrant(actor, "inscricoes:read");
+  assertGrant(actor, "pessoas:read");
+}
+
+export async function getEventAttendance(actor: Actor, id: string) {
+  assertAttendanceRead(actor);
+  const { rows } = await database().query<{
+    id: string;
+    titulo: string;
+    recorrencia: string;
+    status: string;
+    participantes: { id: string; pessoa: string; status: z.infer<typeof registrationStatus> }[];
+  }>(`
+    SELECT e.id, e.data->>'titulo' AS titulo, e.data->>'status' AS status,
+      coalesce(e.data->>'recorrencia', 'nenhuma') AS recorrencia,
+      coalesce((
+        SELECT jsonb_agg(jsonb_build_object(
+          'id', i.id, 'pessoa', p.data->>'nome', 'status', i.data->>'status'
+        ) ORDER BY p.data->>'nome', i.id)
+        FROM icsv_records i
+        JOIN icsv_records p ON p.id = (i.data->>'pessoaId')::uuid
+          AND p.resource = 'pessoas' AND p.deleted_at IS NULL
+          AND p.congregation_id = e.congregation_id
+        WHERE i.resource = 'inscricoes' AND i.deleted_at IS NULL
+          AND i.congregation_id = e.congregation_id AND i.data->>'eventoId' = e.id::text
+      ), '[]'::jsonb) AS participantes
+    FROM icsv_records e WHERE e.id = $1 AND e.resource = 'eventos' AND e.deleted_at IS NULL
+      AND ($2::boolean OR e.congregation_id = $3)
+  `, [recordId(id), actor.scope === "campo", actor.congregacaoId]);
+  if (!rows[0]) throw new ApiError(404, "Atividade não encontrada.");
+  const { participantes, ...evento } = rows[0];
+  return { evento, participantes };
+}
+
+export async function updateEventAttendance(actor: Actor, id: string, input: unknown) {
+  assertAttendanceRead(actor);
+  assertWrite(actor, "inscricoes");
+  const { alteracoes } = attendanceChanges.parse(input);
+  const ids = alteracoes.map((change) => change.id);
+  if (new Set(ids).size !== ids.length) throw new ApiError(400, "Cada inscrição só pode aparecer uma vez.");
+
+  await mutate("inscricoes", async (client, current) => {
+    assertAttendanceRead(current);
+    const event = await findRecord(current, "eventos", id, client);
+    if (event.data.status === "cancelado") {
+      throw new ApiError(409, "Uma atividade cancelada não aceita alterações na chamada.");
+    }
+
+    const { rows } = await client.query<{ id: string; status: string }>(`
+      SELECT id, data->>'status' AS status FROM icsv_records
+      WHERE resource = 'inscricoes' AND deleted_at IS NULL AND id = ANY($1::uuid[])
+        AND congregation_id = $2 AND data->>'eventoId' = $3
+    `, [ids, event.congregation_id, event.id]);
+    if (rows.length !== ids.length) {
+      throw new ApiError(404, "Uma ou mais inscrições não foram encontradas nesta atividade.");
+    }
+
+    const statuses = new Map(rows.map((row) => [row.id, row.status]));
+    for (const change of alteracoes) {
+      const status = statuses.get(change.id);
+      if (status === "cancelado") throw new ApiError(409, "Uma inscrição cancelada não pode receber presença.");
+      if (status !== change.statusAnterior) {
+        throw new ApiError(409, "A chamada foi alterada. Recarregue a lista antes de tentar novamente.");
+      }
+    }
+
+    const updates = alteracoes.filter((change) => change.status !== change.statusAnterior);
+    if (!updates.length) return;
+    await client.query(`
+      WITH updated AS (
+        UPDATE icsv_records r
+        SET data = jsonb_set(r.data, '{status}', to_jsonb(a.status)), updated_at = now()
+        FROM unnest($1::uuid[], $2::text[]) AS a(id, status)
+        WHERE r.id = a.id RETURNING r.id
+      )
+      INSERT INTO icsv_record_history (resource, record_id, actor_id, action, changed_fields)
+      SELECT 'inscricoes', id, $3, 'update', ARRAY['status'] FROM updated
+    `, [updates.map((change) => change.id), updates.map((change) => change.status), current.id]);
   });
 }

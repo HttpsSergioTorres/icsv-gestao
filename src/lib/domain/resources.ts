@@ -1,24 +1,9 @@
 import { z } from "zod";
 import { eventTime } from "./occurrences";
+import { resourceNames, type ResourceName } from "./resource-names";
 
-export const resourceNames = [
-  "congregacoes",
-  "pessoas",
-  "ministerios",
-  "equipes",
-  "eventos",
-  "inscricoes",
-  "servicos",
-  "escalas",
-  "categorias",
-  "movimentacoes",
-  "projetos",
-  "tarefas",
-  "perfis",
-  "usuarios",
-] as const;
+export { resourceNames, type ResourceName } from "./resource-names";
 
-export type ResourceName = (typeof resourceNames)[number];
 export type FieldType = "text" | "tel" | "email" | "password" | "date" | "datetime"
   | "money" | "select" | "multiselect" | "checkbox" | "textarea" | "reference";
 

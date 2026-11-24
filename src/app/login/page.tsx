@@ -4,6 +4,9 @@ import '@/components/gestao.css'
 
 export const metadata: Metadata = { title: 'Acesso | ICSV Gestão' }
 
-export default function LoginPage() {
-  return <TelaLogin />
+export default async function LoginPage({ searchParams }: {
+  searchParams: Promise<{ senha?: string | string[] }>
+}) {
+  const { senha } = await searchParams
+  return <TelaLogin senhaAlterada={senha === 'alterada'} />
 }

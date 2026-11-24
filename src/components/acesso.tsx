@@ -21,7 +21,7 @@ function AcessoLayout({ children }: { children: ReactNode }) {
   </main>
 }
 
-export function TelaLogin() {
+export function TelaLogin({ senhaAlterada }: { senhaAlterada: boolean }) {
   const router = useRouter()
   const [shown, setShown] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -47,6 +47,7 @@ export function TelaLogin() {
       <span className="auth-mark"><LockKeyhole size={22} aria-hidden="true" /></span>
       <h2 id="login-title">Acesse sua conta</h2>
       <p>Entre para acessar o ICSV Gestão.</p>
+      {senhaAlterada && <p className="success-banner" role="status">Senha alterada. Entre novamente com a nova senha.</p>}
       <form onSubmit={submit}>
         <label htmlFor="email">E-mail</label>
         <input name="email" id="email" autoComplete="username" type="email" placeholder="voce@exemplo.com" required />

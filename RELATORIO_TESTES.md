@@ -32,3 +32,18 @@ A primeira execução funcional encontrou uma importação CSS pendente e ficou 
 | Regras isoladas | Validação de datas, recorrência, valores monetários, cadastro, JSON e origem das operações HTTP. |
 
 As suítes usam dados fictícios. No Codex, os testes utilizaram o Chromium disponível no sistema. Os resultados cobrem os cenários listados. O percentual de cobertura, o funcionamento em outros navegadores e a execução do workflow remoto não foram medidos.
+
+## Chamada em lote, alteração de senha e primeiro administrador
+
+| Verificação | Resultado observado |
+| --- | --- |
+| `npm run typecheck` | Aprovada após integrar os fluxos. |
+| `npm test` | 15 testes aprovados em 3 arquivos. |
+| `npm run test:e2e` com `next dev` | 13 cenários aprovados em 20,6 s, com Chromium e PostgreSQL isolado. |
+| `npm run build` | Aprovada. |
+| `npm run test:e2e` com `next start` | 13 cenários aprovados em 10,2 s no build final, com Chromium e PostgreSQL 17 isolado. |
+| `npm run db:criar-admin` | Conta criada em base migrada sem seed e autenticada no navegador com os acessos de campo. Uma nova tentativa recusou a base já provisionada. Em teste concorrente, apenas uma conta foi criada. |
+
+- **Chamada em lote.** A Secretaria consultou nomes e situações na sua congregação. O servidor recusou acesso a outra congregação, inscrições de outras atividades, alterações em inscrições ou atividades canceladas, IDs duplicados e situação anterior desatualizada. Os lotes recusados preservaram os registros e um lote válido gravou presença e ausência na mesma operação.
+- **Chamada no navegador.** A navegação partiu da lista de atividades em desktop. Em viewport de 390 × 844 px, a revisão mostrou duas alterações sem gravação antecipada. Uma edição concorrente causou conflito e preservou o restante do lote. Após recarregar a chamada, foi possível confirmar as alterações e recuperar os resultados ao recarregar a página.
+- **Minha conta.** A troca de senha própria pelo formulário exigiu a senha atual, enquanto o cadastro administrativo recusou a alteração direta da própria senha. A troca encerrou duas sessões, invalidou um código de recuperação emitido antes da troca, rejeitou o login com a senha antiga e aceitou a senha nova. O teste usou uma conta temporária e verificou a navegação em desktop e o formulário em viewport de 390 × 844 px.

@@ -1,0 +1,97 @@
+.chamada-note {
+  display: flex;
+  align-items: center;
+  gap: .45rem;
+  margin-bottom: .75rem;
+  padding: .65rem .8rem;
+  border: 1px solid #cfe1d6;
+  border-radius: .5rem;
+  color: var(--forest);
+  background: #eef5ef;
+  font-size: .9rem;
+  font-weight: 750;
+}
+
+.chamada-note svg {
+  flex-shrink: 0;
+}
+
+.chamada-warning {
+  border-color: #eeddbb;
+  color: #775618;
+  background: #fbf4e4;
+}
+
+.chamada-summary {
+  margin-bottom: 1.25rem;
+}
+
+.chamada-table {
+  width: 100%;
+}
+
+.chamada-table tbody th {
+  text-align: left;
+  font-weight: 800;
+}
+
+.chamada-table select {
+  width: min(100%, 12rem);
+  min-height: 2.5rem;
+  padding: .4rem .5rem;
+  border: 1px solid #cad8d0;
+  border-radius: .45rem;
+  color: var(--forest);
+  background: #fff;
+}
+
+.chamada-footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: .65rem 1rem;
+  margin-top: .9rem;
+}
+
+.chamada-footer p {
+  color: var(--text-muted);
+  font-size: .875rem;
+  font-weight: 750;
+}
+
+.chamada-footer .btn:disabled {
+  cursor: default;
+}
+
+.chamada-review {
+  display: grid;
+  max-height: 16rem;
+  gap: .4rem;
+  margin: .85rem 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.chamada-review li {
+  display: grid;
+  gap: .2rem;
+  padding: .55rem .65rem;
+  border-radius: .4rem;
+  color: var(--forest);
+  background: var(--surface-muted);
+}
+
+.chamada-review span {
+  color: var(--text-muted);
+  font-size: .85rem;
+}
+
+@media (max-width: 660px) {
+  .chamada-table tbody th.record-name {
+    padding: .35rem 0;
+    border: 0;
+    overflow-wrap: anywhere;
+  }
+}

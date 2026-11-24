@@ -146,3 +146,64 @@ test("persiste movimentações e tarefas e consolida relatórios com dados reais
   await request.post("/api/auth/logout");
   expect((await request.get(comprovanteUrl)).status()).toBe(401);
 });
+
+test("protege presenças e escalas canceladas e impede reativar atividade com conflito", async ({ request }) => {
+  await login(request);
+  const congregacao = await create(request, "congregacoes", { nome: label("Congregação cancelamentos") });
+  const congregacaoId = congregacao.id;
+  const pessoa = await create(request, "pessoas", { nome: label("Voluntário"), tipo: "voluntario", congregacaoId });
+  const participante = await create(request, "pessoas", { nome: label("Participante"), congregacaoId });
+  const ministerio = await create(request, "ministerios", { nome: label("Ministério"), congregacaoId });
+  const servico = await create(request, "servicos", {
+    nome: label("Serviço"), congregacaoId, ministerioId: ministerio.id,
+  });
+  const dadosEvento = {
+    tipo: "culto",
+    congregacaoId,
+    inicio: "2030-04-10T18:00:00-03:00",
+    fim: "2030-04-10T20:00:00-03:00",
+  };
+  const evento = await create(request, "eventos", { ...dadosEvento, titulo: label("Culto a cancelar") });
+  const inscricaoCancelada = await create(request, "inscricoes", {
+    congregacaoId, eventoId: evento.id, pessoaId: pessoa.id, status: "cancelado",
+  });
+  const inscricaoAtiva = await create(request, "inscricoes", {
+    congregacaoId, eventoId: evento.id, pessoaId: participante.id,
+  });
+  const dadosEscala = {
+    congregacaoId, pessoaId: pessoa.id, ministerioId: ministerio.id, servicoId: servico.id,
+  };
+  const escala = await create(request, "escalas", { ...dadosEscala, eventoId: evento.id });
+  expect((await request.patch(`/api/inscricoes/${inscricaoCancelada.id}`, {
+    data: { status: "presente" },
+  })).status()).toBe(409);
+
+  await expect(await request.patch(`/api/eventos/${evento.id}`, { data: { status: "cancelado" } })).toBeOK();
+  expect((await request.patch(`/api/inscricoes/${inscricaoAtiva.id}`, {
+    data: { status: "ausente" },
+  })).status()).toBe(409);
+  expect((await request.patch(`/api/escalas/${escala.id}`, {
+    data: { status: "confirmada" },
+  })).status()).toBe(409);
+
+  const outroEvento = await create(request, "eventos", { ...dadosEvento, titulo: label("Culto no mesmo horário") });
+  await create(request, "escalas", { ...dadosEscala, eventoId: outroEvento.id });
+  expect((await request.patch(`/api/eventos/${evento.id}`, {
+    data: { status: "agendado" },
+  })).status()).toBe(409);
+
+  const preservado = await request.get(`/api/eventos/${evento.id}`);
+  await expect(preservado).toBeOK();
+  expect((await preservado.json()).item.status).toBe("cancelado");
+  expect(await list(request, "escalas")).toContainEqual(expect.objectContaining({
+    id: escala.id, status: "pendente",
+  }));
+  expect(await list(request, "inscricoes")).toEqual(expect.arrayContaining([
+    expect.objectContaining({ id: inscricaoCancelada.id, status: "cancelado" }),
+    expect.objectContaining({ id: inscricaoAtiva.id, status: "inscrito" }),
+  ]));
+
+  await expect(await request.patch(`/api/eventos/${evento.id}`, {
+    data: { status: "agendado", inicio: "2030-04-11T18:00:00-03:00", fim: "2030-04-11T20:00:00-03:00" },
+  })).toBeOK();
+});

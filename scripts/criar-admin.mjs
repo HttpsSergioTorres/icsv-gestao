@@ -1,9 +1,7 @@
 import { randomBytes, randomUUID, scryptSync } from 'node:crypto';
 import { parseArgs } from 'node:util';
 import { z } from 'zod';
-import { resourceNames } from '../src/lib/domain/resource-names.ts';
-
-const protectedProfileId = '10000000-0000-4000-8000-000000000001';
+import { protectedAdminProfileId, resourceNames } from '../src/lib/domain/resource-names.ts';
 
 const usage = 'Uso: node scripts/criar-admin.mjs --nome "<nome>" --email "<e-mail>"\n'
   + 'Forneça a senha em uma única linha por stdin, sem eco no terminal.';
@@ -86,16 +84,16 @@ async function provision(client, account, passwordHash) {
       ativo: true,
     };
     const accountId = randomUUID();
-    const user = { ...account, perfilId: protectedProfileId, congregacaoId: null, ativo: true };
+    const user = { ...account, perfilId: protectedAdminProfileId, congregacaoId: null, ativo: true };
 
     await client.query(`
       INSERT INTO icsv_records (id, resource, data)
       VALUES ($1, 'perfis', $2), ($3, 'usuarios', $4)
-    `, [protectedProfileId, profile, accountId, user]);
+    `, [protectedAdminProfileId, profile, accountId, user]);
     await client.query(`
       INSERT INTO icsv_record_links (source_id, field, target_id, target_resource)
       VALUES ($1, 'perfilId', $2, 'perfis')
-    `, [accountId, protectedProfileId]);
+    `, [accountId, protectedAdminProfileId]);
     await client.query(`
       INSERT INTO icsv_credentials (user_id, password_hash) VALUES ($1, $2)
     `, [accountId, passwordHash]);

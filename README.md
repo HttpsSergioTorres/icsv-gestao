@@ -86,3 +86,5 @@ Abra **Registrar presenças** na agenda ou na lista de atividades. Marque soment
 - `.codex/agents/` e `.agents/skills/` contêm orientações reutilizáveis para agentes do Codex.
 
 Acompanhe o [roadmap](ROADMAP.md), o [estado dos módulos](STATUS_DESENVOLVIMENTO.md), as [decisões técnicas](DECISOES_TECNICAS.md) e as [pendências institucionais](PENDENCIAS_NEGOCIO.md).
+
+O [guia dos fluxos atuais](FLUXOS_ICSV.md) descreve como usar cada módulo e quais decisões ainda precisam de validação pela igreja.

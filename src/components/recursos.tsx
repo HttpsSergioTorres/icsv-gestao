@@ -3,6 +3,8 @@
 import Link from 'next/link'
 import { useEffect, useId, useMemo, useState, type FormEvent } from 'react'
 import { ArrowDownToLine, CalendarDays, CircleHelp, History, KeyRound, Pencil, Plus, Search } from 'lucide-react'
+import { eventTime } from '@/lib/domain/occurrences'
+import { protectedAdminProfileId } from '@/lib/domain/resource-names'
 import { resources, type Field, type ResourceName } from '@/lib/domain/resources'
 import { api, downloadCsv, formatDate, formatDateTime, messageOf, money, write, type RecordItem } from './client-api'
 import { AccessDenied, useSession } from './gestao-shell'
@@ -26,15 +28,17 @@ const dateInputFormatter = new Intl.DateTimeFormat('sv-SE', {
   hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
 })
 
+function localDateInput(value: string) {
+  const date = new Date(eventTime(value))
+  return Number.isNaN(date.valueOf()) ? '' : dateInputFormatter.format(date).replace(' ', 'T')
+}
+
 function editValue(field: Field, value: unknown): Value {
   if (field.writeOnly) return ''
-  if (field.type === 'checkbox') return value === true
+  if (field.type === 'checkbox') return value === true || value === 'true'
   if (field.type === 'multiselect') return Array.isArray(value) ? value.map(String) : []
   if (field.type === 'date') return text(value).slice(0, 10)
-  if (field.type === 'datetime' && text(value)) {
-    const date = new Date(text(value))
-    return Number.isNaN(date.valueOf()) ? '' : dateInputFormatter.format(date).replace(' ', 'T')
-  }
+  if (field.type === 'datetime' && text(value)) return localDateInput(text(value))
   return text(value)
 }
 
@@ -117,7 +121,11 @@ function optionsFor(field: Field, options: Options, values: FormValues) {
   if (field.key === 'categoriaId' && values.tipo) {
     candidates = candidates.filter((item) => item.tipo === values.tipo || item.id === values[field.key])
   }
-  return candidates.filter((item) => item.ativo !== false || item.id === values[field.key])
+  if (field.key === 'servicoId' && values.ministerioId) {
+    candidates = candidates.filter((item) => !item.ministerioId || item.ministerioId === values.ministerioId || item.id === values[field.key])
+  }
+  return candidates.filter((item) => item.id === values[field.key]
+    || (item.ativo !== false && (field.reference !== 'eventos' || item.status !== 'cancelado')))
 }
 
 function FieldInput({ field, value, options, values, create, change }: {
@@ -207,8 +215,15 @@ function RegistroEditor({ resource, editor, options, filters, close, finish }: {
   const item = editor.item
   const create = editor.mode === 'create'
   const ownAccount = resource === 'usuarios' && item?.id === user.id
-  const editableFields = ownAccount ? definition.fields.filter((field) => field.key !== 'senha') : definition.fields
-  const [values, setValues] = useState<FormValues>(() => initialValues(resource, item, filters, user.congregacaoId))
+  const editableFields = ownAccount
+    ? definition.fields.filter((field) => !['senha', 'ativo', 'perfilId', 'congregacaoId'].includes(field.key))
+    : definition.fields
+  const fields = resource === 'congregacoes' && create
+    ? editableFields.filter((field) => field.reference !== 'pessoas')
+    : editableFields
+  const [initial] = useState<FormValues>(() => initialValues(resource, item, filters, user.congregacaoId))
+  const [values, setValues] = useState<FormValues>(initial)
+  const referenceValues = resource === 'congregacoes' && item ? { ...values, congregacaoId: item.id } : values
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [receipt, setReceipt] = useState<File>()
@@ -220,7 +235,11 @@ function RegistroEditor({ resource, editor, options, filters, close, finish }: {
     setBusy(true)
     setError('')
     try {
-      const payload = editorPayload(resource, editableFields, values, create)
+      const changedFields = create ? fields : fields.filter((field) => (
+        JSON.stringify(initial[field.key]) !== JSON.stringify(values[field.key])
+        || (field.key === 'recorrenciaAte' && initial.recorrencia !== 'nenhuma' && values.recorrencia === 'nenhuma')
+      ))
+      const payload = editorPayload(resource, changedFields, values, create)
       if (receipt) {
         if (!values.congregacaoId) throw new Error('Selecione a congregação do comprovante.')
         if (receiptUrl && receiptScope === values.congregacaoId) {
@@ -234,6 +253,10 @@ function RegistroEditor({ resource, editor, options, filters, close, finish }: {
           setReceiptScope(text(values.congregacaoId))
           payload.comprovante = url
         }
+      }
+      if (!create && !Object.keys(payload).length) {
+        close()
+        return
       }
       await api(item ? `/api/${resource}/${item.id}` : `/api/${resource}`, write(item ? 'PATCH' : 'POST', payload))
       finish(item ? 'Alterações salvas.' : 'Registro criado.')
@@ -253,6 +276,10 @@ function RegistroEditor({ resource, editor, options, filters, close, finish }: {
         }
       }
       if (key === 'tipo' && resource === 'movimentacoes') next.categoriaId = ''
+      if (key === 'ministerioId' && resource === 'escalas') {
+        const service = options.servicos?.find(({ id }) => id === previous.servicoId)
+        if (service?.ministerioId && service.ministerioId !== value) next.servicoId = ''
+      }
       return next
     })
   }
@@ -260,8 +287,8 @@ function RegistroEditor({ resource, editor, options, filters, close, finish }: {
   return <Modal title={editor.mode === 'view' ? definition.singular : `${create ? 'Cadastrar' : 'Editar'} ${definition.singular.toLowerCase()}`} close={() => { if (!busy) close() }}>
     {editor.mode === 'view' && item ? <Details item={item} resource={resource} options={options} /> : <form onSubmit={save}>
       <div className="editor-grid">
-        {editableFields.filter((field) => field.key !== 'recorrenciaAte' || values.recorrencia !== 'nenhuma').map((field) => (
-          <FieldInput key={field.key} field={field} value={values[field.key]} options={options} values={values} create={create} change={(value) => change(field.key, value)} />
+        {fields.filter((field) => field.key !== 'recorrenciaAte' || values.recorrencia !== 'nenhuma').map((field) => (
+          <FieldInput key={field.key} field={field} value={values[field.key]} options={options} values={referenceValues} create={create} change={(value) => change(field.key, value)} />
         ))}
         {ownAccount && <Link href="/minha-conta" className="text-link full-field"><KeyRound size={15} aria-hidden="true" />Alterar senha em Minha conta</Link>}
         {resource === 'movimentacoes' && <label className="full-field">Anexar comprovante
@@ -420,11 +447,13 @@ export function Recursos({ resource, initialFilters, initialEdit, startNew }: {
   const definition = resources[resource]
   const user = useSession()
   const permissions = user.permissions[resource]
+  const canWrite = Boolean(permissions?.write) && (resource !== 'perfis' || user.scope === 'campo')
+  const canCreate = canWrite && (resource !== 'congregacoes' || user.scope === 'campo')
   const { items, options, error, reload } = useRecords(resource, Boolean(permissions?.read))
   const [query, setQuery] = useState('')
   const [filters, setFilters] = useState(initialFilters)
   const [period, setPeriod] = useState({ from: '', until: '' })
-  const [editor, setEditor] = useState<Editor | null>(startNew && permissions?.write ? { mode: 'create' } : null)
+  const [editor, setEditor] = useState<Editor | null>(startNew && canCreate ? { mode: 'create' } : null)
   const [linkedEdit, setLinkedEdit] = useState(initialEdit)
   const [action, setAction] = useState<Action | null>(null)
   const [notice, setNotice] = useState('')
@@ -436,7 +465,7 @@ export function Recursos({ resource, initialFilters, initialEdit, startNew }: {
     const words = normalized(query.trim()).split(/\s+/).filter(Boolean)
     return (items ?? []).filter((item) => {
       if (Object.entries(filters).some(([key, value]) => value && text(item[key]) !== value && String(item[key]) !== value)) return false
-      const day = dateField ? text(item[dateField]).slice(0, 10) : ''
+      const day = dateField === 'inicio' ? localDateInput(text(item.inicio)).slice(0, 10) : text(item.data)
       if (dateField && ((period.from && day < period.from) || (period.until && day > period.until))) return false
       const record = normalized(definition.fields.filter((field) => !field.writeOnly).map((field) => cellValue(field, item[field.key], options)).join(' '))
       return words.every((part) => record.includes(part))
@@ -446,7 +475,9 @@ export function Recursos({ resource, initialFilters, initialEdit, startNew }: {
   if (!permissions?.read) return <AccessDenied />
 
   const linkedItem = linkedEdit ? items?.find((item) => item.id === linkedEdit) : undefined
-  const activeEditor = editor ?? (linkedItem ? { mode: permissions.write ? 'edit' as const : 'view' as const, item: linkedItem } : null)
+  const canEdit = (item: RecordItem) => canWrite
+    && (resource !== 'perfis' || (item.id !== user.profileId && item.id !== protectedAdminProfileId))
+  const activeEditor = editor ?? (linkedItem ? { mode: canEdit(linkedItem) ? 'edit' as const : 'view' as const, item: linkedItem } : null)
   const nested = (relationLinks[resource] ?? []).filter((link) => user.permissions[link.resource]?.read)
   const hasFilters = query || Object.values(filters).some(Boolean) || period.from || period.until
   const totals = resource === 'movimentacoes'
@@ -483,7 +514,7 @@ export function Recursos({ resource, initialFilters, initialEdit, startNew }: {
     <PageHeading title={resource === 'eventos' ? 'Atividades' : definition.title} description={definition.description}>
       {resource === 'eventos' && <Link className="btn btn-secondary" href="/agenda"><CalendarDays size={17} />Ver calendário</Link>}
       {definition.exportable && !!visible.length && <button className="btn btn-secondary" type="button" onClick={exportRecords}><ArrowDownToLine size={17} />Exportar CSV</button>}
-      {permissions.write && <button type="button" className="btn btn-primary" onClick={create}><Plus size={18} />Novo registro</button>}
+      {canCreate && <button type="button" className="btn btn-primary" onClick={create}><Plus size={18} />Novo registro</button>}
     </PageHeading>
     {notice && <p role="status" className="success-banner">{notice}</p>}
     {linkedEdit && items && !linkedItem && <p role="alert" className="alert">O registro solicitado está indisponível.</p>}
@@ -519,7 +550,8 @@ export function Recursos({ resource, initialFilters, initialEdit, startNew }: {
               </tr></thead>
               <tbody>{visible.map((item) => {
                 const deleteLabel = item.ativo === true ? 'Desativar' : resource === 'eventos' ? 'Cancelar' : 'Excluir'
-                const canDelete = permissions.write && item.ativo !== false && !(resource === 'eventos' && item.status === 'cancelado')
+                const ownUser = resource === 'usuarios' && item.id === user.id
+                const canDelete = canEdit(item) && !ownUser && item.ativo !== false && !(resource === 'eventos' && item.status === 'cancelado')
                 const tasks = options.tarefas?.filter((task) => task.projetoId === item.id && task.status !== 'cancelada') ?? []
                 const done = tasks.filter((task) => task.status === 'concluida').length
                 return <tr key={item.id} role="row">
@@ -533,10 +565,10 @@ export function Recursos({ resource, initialFilters, initialEdit, startNew }: {
                   </td>}
                   <td className="record-actions" role="cell"><div className="row-actions">
                     <button className="small-action" type="button" onClick={() => setEditor({ mode: 'view', item })}><CircleHelp size={14} />Detalhes</button>
-                    {permissions.write && <button className="small-action" type="button" onClick={() => setEditor({ mode: 'edit', item })}><Pencil size={14} />Editar</button>}
+                    {canEdit(item) && <button className="small-action" type="button" onClick={() => setEditor({ mode: 'edit', item })}><Pencil size={14} />Editar</button>}
                     {canDelete && <button className="small-action action-danger" type="button" onClick={() => setAction({ type: 'delete', item })}>{deleteLabel}</button>}
                     {(resource === 'pessoas' || resource === 'movimentacoes') && <button className="small-action" type="button" onClick={() => setAction({ type: 'history', item })}><History size={14} />Histórico</button>}
-                    {resource === 'usuarios' && permissions.write && item.ativo !== false && <button className="small-action" type="button" onClick={() => setAction({ type: 'recovery', item })}><KeyRound size={14} />Recuperar acesso</button>}
+                    {resource === 'usuarios' && permissions.write && !ownUser && item.ativo !== false && <button className="small-action" type="button" onClick={() => setAction({ type: 'recovery', item })}><KeyRound size={14} />Recuperar acesso</button>}
                     {resource === 'escalas' && permissions.write && item.status !== 'substituida' && <button className="small-action" type="button" onClick={() => setAction({ type: 'replace', item })}>Substituir</button>}
                     {resource === 'eventos' && <LinkChamada id={item.id} cancelado={item.status === 'cancelado'} className="small-action" />}
                     {nested.map((link) => <Link className="small-action" key={link.resource} href={queryLink(link.resource, link.key, item.id)}>{link.label}</Link>)}
@@ -549,7 +581,7 @@ export function Recursos({ resource, initialFilters, initialEdit, startNew }: {
           : <Empty title="Nenhum registro encontrado" description={hasFilters ? 'Ajuste os filtros para procurar outras opções.' : 'Os novos registros aparecerão nesta lista.'}>
             {hasFilters
               ? <button className="btn btn-secondary" type="button" onClick={clearFilters}>Limpar filtros</button>
-              : permissions.write && <button className="btn btn-primary" type="button" onClick={create}><Plus size={17} />Cadastrar primeiro registro</button>}
+              : canCreate && <button className="btn btn-primary" type="button" onClick={create}><Plus size={17} />Cadastrar primeiro registro</button>}
           </Empty>}
       </>
       : error ? <LoadError error={error} retry={reload} /> : <Loading />}

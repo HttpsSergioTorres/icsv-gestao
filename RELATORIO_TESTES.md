@@ -47,3 +47,19 @@ As suítes usam dados fictícios. No Codex, os testes utilizaram o Chromium disp
 - **Chamada em lote.** A Secretaria consultou nomes e situações na sua congregação. O servidor recusou acesso a outra congregação, inscrições de outras atividades, alterações em inscrições ou atividades canceladas, IDs duplicados e situação anterior desatualizada. Os lotes recusados preservaram os registros e um lote válido gravou presença e ausência na mesma operação.
 - **Chamada no navegador.** A navegação partiu da lista de atividades em desktop. Em viewport de 390 × 844 px, a revisão mostrou duas alterações sem gravação antecipada. Uma edição concorrente causou conflito e preservou o restante do lote. Após recarregar a chamada, foi possível confirmar as alterações e recuperar os resultados ao recarregar a página.
 - **Minha conta.** A troca de senha própria pelo formulário exigiu a senha atual, enquanto o cadastro administrativo recusou a alteração direta da própria senha. A troca encerrou duas sessões, invalidou um código de recuperação emitido antes da troca, rejeitou o login com a senha antiga e aceitou a senha nova. O teste usou uma conta temporária e verificou a navegação em desktop e o formulário em viewport de 390 × 844 px.
+
+## Navegação responsiva e revisão dos cadastros
+
+| Verificação | Resultado observado |
+| --- | --- |
+| `npm run typecheck` | Aprovada. |
+| `npm test` | 15 testes aprovados em 3 arquivos. |
+| `npm run test:e2e` com `next dev` | 18 cenários aprovados em 46,9 s, com Chromium e PostgreSQL isolado. |
+| `npm run build` | Aprovado. |
+| `npm run test:e2e` com `next start` | Os 18 cenários passaram em 18,5 s no build final com PostgreSQL 17 isolado. |
+
+- **Menu no desktop.** Em 1.440 × 900 px, a navegação ficou visível e os controles do menu móvel permaneceram ocultos ao passar o ponteiro pela marca e pelo link ativo.
+- **Menu móvel.** Em 390 × 844 px, o menu começa fechado. A abertura leva o foco ao botão de fechar e mantém o foco no menu ao navegar com Tab. Escape, o botão de fechar e o clique no fundo devolvem foco ao controle de abertura. A escolha de um módulo fecha o menu e foca o conteúdo. A alternância entre desktop e móvel preserva a navegação e retorna ao menu móvel fechado.
+- **Navegação dos módulos.** O Chromium abriu 17 telas e aguardou a agenda, os relatórios, os indicadores ou os filtros de cada cadastro após o carregamento dos dados.
+- **Cadastros.** A criação de pessoa com filtro de ativos manteve a situação ativa no formulário e no banco. Uma edição de nome pelo formulário preservou um telefone atualizado em paralelo. Uma verificação adicional constatou a ausência de ações incompatíveis na própria conta e no perfil protegido.
+- **Atividades e escalas.** A API rejeitou alterações de presença e confirmação de escala em registros cancelados. A reativação em horário conflitante preservou a atividade cancelada, e a reativação em outro horário foi aceita. A lista e a edição foram verificadas com um horário local sem offset e um horário UTC que corresponde ao dia anterior em Brasília.

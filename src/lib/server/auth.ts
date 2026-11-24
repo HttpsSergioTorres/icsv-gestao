@@ -67,6 +67,8 @@ export function publicUser(actor: Actor) {
     name: actor.name,
     email: actor.email,
     role: actor.role,
+    profileId: actor.profileId,
+    scope: actor.scope,
     congregacaoId: actor.congregacaoId,
     permissions: Object.fromEntries(resourceNames.map((name) => [name, {
       read: actor.grants.has(`${name}:read`),

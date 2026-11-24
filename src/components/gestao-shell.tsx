@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import {
   ArrowRight, CalendarDays, ChartNoAxesCombined, ChevronDown, Church, CircleHelp,
   ClipboardList, Clock3, LayoutDashboard, LogOut, Menu, Network, PanelTop,
@@ -69,6 +69,21 @@ export function GestaoShell({ children }: { children: ReactNode }) {
   const [profileOpen, setProfileOpen] = useState(false)
   const [leaving, setLeaving] = useState(false)
   const [logoutError, setLogoutError] = useState('')
+  const sidebar = useRef<HTMLElement>(null)
+  const menuToggle = useRef<HTMLButtonElement>(null)
+  const menuClose = useRef<HTMLButtonElement>(null)
+  const main = useRef<HTMLElement>(null)
+  const profileTrigger = useRef<HTMLButtonElement>(null)
+  const menuFocusTarget = useRef<'toggle' | 'content' | 'brand' | null>(null)
+
+  const closeMenu = useCallback((target: typeof menuFocusTarget.current) => {
+    menuFocusTarget.current = target
+    setOpen(false)
+  }, [])
+
+  function navigateFromMenu() {
+    if (open) closeMenu('content')
+  }
 
   useEffect(() => {
     const controller = new AbortController()
@@ -86,16 +101,65 @@ export function GestaoShell({ children }: { children: ReactNode }) {
   }, [attempt, router])
 
   useEffect(() => {
-    if (!open && !profileOpen) return
+    if (!open) {
+      const target = menuFocusTarget.current
+      menuFocusTarget.current = null
+      if (target === 'toggle') menuToggle.current?.focus({ preventScroll: true })
+      if (target === 'content') main.current?.focus({ preventScroll: true })
+      if (target === 'brand') sidebar.current?.querySelector<HTMLAnchorElement>('.sidebar-brand')?.focus()
+      return
+    }
+
+    const mobile = window.matchMedia('(max-width: 980px)')
+    const overflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    menuClose.current?.focus({ preventScroll: true })
+
+    function onResize(event: MediaQueryListEvent) {
+      if (event.matches) return
+      const focusedLink = sidebar.current?.contains(document.activeElement) && document.activeElement !== menuClose.current
+      closeMenu(focusedLink ? null : 'brand')
+    }
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        closeMenu('toggle')
+      }
+
+      if (event.key !== 'Tab') return
+      const controls = sidebar.current?.querySelectorAll<HTMLElement>('a[href], button:not(:disabled)')
+      const first = controls?.[0]
+      const last = controls?.[controls.length - 1]
+      if (!first || !last) return
+      const active = document.activeElement
+      if (!sidebar.current?.contains(active) || active === (event.shiftKey ? first : last)) {
+        event.preventDefault()
+        const target = event.shiftKey ? last : first
+        target.focus()
+      }
+    }
+
+    mobile.addEventListener('change', onResize)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      mobile.removeEventListener('change', onResize)
+      document.removeEventListener('keydown', onKeyDown)
+      document.body.style.overflow = overflow
+    }
+  }, [closeMenu, open])
+
+  useEffect(() => {
+    if (!profileOpen) return
     function dismiss(event: KeyboardEvent) {
       if (event.key === 'Escape') {
-        setOpen(false)
         setProfileOpen(false)
+        if (document.activeElement?.closest('.profile')) profileTrigger.current?.focus()
       }
     }
     window.addEventListener('keydown', dismiss)
     return () => window.removeEventListener('keydown', dismiss)
-  }, [open, profileOpen])
+  }, [profileOpen])
 
   async function signOut() {
     setLeaving(true)
@@ -129,11 +193,12 @@ export function GestaoShell({ children }: { children: ReactNode }) {
   return (
     <SessionContext.Provider value={user}>
       <div className="gestao-shell">
-        <a className="skip-link" href="#conteudo">Ir para o conteúdo</a>
-        {open && <button className="sidebar-overlay" aria-label="Fechar menu" onClick={() => setOpen(false)} />}
-        <aside className={`sidebar${open ? ' sidebar-open' : ''}`} id="menu-principal">
-          <Link className="sidebar-brand" href="/" onClick={() => setOpen(false)} aria-label="ICSV Gestão, painel geral"><Marca /></Link>
-          <button className="icon-button sidebar-close" type="button" aria-label="Fechar menu" onClick={() => setOpen(false)}><X size={20} /></button>
+        <a className="skip-link" href="#conteudo" inert={open}>Ir para o conteúdo</a>
+        {open && <div className="sidebar-overlay" aria-hidden="true" onClick={() => closeMenu('toggle')} />}
+        <aside ref={sidebar} className={`sidebar${open ? ' sidebar-open' : ''}`} id="menu-principal"
+          role={open ? 'dialog' : undefined} aria-modal={open || undefined} aria-label={open ? 'Menu principal' : undefined}>
+          <Link className="sidebar-brand" href="/" onNavigate={navigateFromMenu} aria-label="ICSV Gestão, painel geral"><Marca /></Link>
+          <button ref={menuClose} className="icon-button sidebar-close" type="button" aria-label="Fechar menu" onClick={() => closeMenu('toggle')}><X size={20} /></button>
           <nav className="side-nav" aria-label="Navegação principal">
             {groups.map(({ title, links }) => {
               const allowed = links.filter((link) => {
@@ -146,21 +211,22 @@ export function GestaoShell({ children }: { children: ReactNode }) {
                 <ul>
                   {allowed.map(({ href, label, icon: Icon }) => {
                     const active = pathname === href || (href === '/agenda' && inActivities)
-                    return <li key={href}><Link href={href} aria-current={active ? 'page' : undefined} onClick={() => setOpen(false)}><Icon size={17} strokeWidth={1.8} />{label}</Link></li>
+                    return <li key={href}><Link href={href} aria-current={active ? 'page' : undefined} onNavigate={navigateFromMenu}><Icon size={17} strokeWidth={1.8} />{label}</Link></li>
                   })}
                 </ul>
               </section>
             })}
           </nav>
         </aside>
-        <div className="work-area">
+        <div className="work-area" inert={open}>
           <header className="topbar">
             <div className="topbar-left">
-              <button className="icon-button menu-toggle" aria-label="Abrir menu" aria-controls="menu-principal" aria-expanded={open} onClick={() => setOpen(!open)}><Menu size={22} /></button>
+              <button ref={menuToggle} className="icon-button menu-toggle" type="button" aria-label="Abrir menu"
+                aria-controls="menu-principal" aria-expanded={open} onClick={() => { setProfileOpen(false); setOpen(true) }}><Menu size={22} /></button>
               <span className="topbar-location"><span>Gestão</span><ArrowRight size={13} aria-hidden="true" /><strong>{location}</strong></span>
             </div>
             <div className="profile">
-              <button className="profile-trigger" type="button" aria-label={`Menu da conta de ${user.name}`} aria-expanded={profileOpen} onClick={() => setProfileOpen(!profileOpen)}>
+              <button ref={profileTrigger} className="profile-trigger" type="button" aria-label={`Menu da conta de ${user.name}`} aria-expanded={profileOpen} onClick={() => setProfileOpen(!profileOpen)}>
                 <span className="avatar" aria-hidden="true">{initials || 'IC'}</span>
                 <span className="profile-name">{user.name}<small>{user.role}</small></span>
                 <ChevronDown className="profile-chevron" size={15} aria-hidden="true" />
@@ -173,7 +239,7 @@ export function GestaoShell({ children }: { children: ReactNode }) {
               </div>}
             </div>
           </header>
-          <main className="page-content" id="conteudo">{children}</main>
+          <main ref={main} className="page-content" id="conteudo" tabIndex={-1}>{children}</main>
         </div>
       </div>
     </SessionContext.Provider>

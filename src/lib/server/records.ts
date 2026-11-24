@@ -3,6 +3,7 @@ import { type PoolClient } from "pg";
 import { z } from "zod";
 import { eventTime, iterateOccurrences, type RecurringEvent } from "@/lib/domain/occurrences";
 import { getResourceSchema, isResourceName, resources, type ResourceName } from "@/lib/domain/resources";
+import { protectedAdminProfileId } from "@/lib/domain/resource-names";
 import { assertCanManageProfile, assertGrant, hashPassword, requireUser, updatePassword, type Actor } from "./auth";
 import { database, recordTransaction } from "./db";
 import { ApiError } from "./http";
@@ -17,7 +18,6 @@ type ResourceRow = {
   created_at: Date;
   updated_at: Date;
 };
-const protectedProfile = "10000000-0000-4000-8000-000000000001";
 const uuid = z.uuid("Identificador inválido.");
 
 export function resourceName(name: string): ResourceName {
@@ -160,7 +160,7 @@ async function prepareRecord(
   if (resource === "perfis") {
     verifyProfile(actor, data);
     if (previous) verifyProfile(actor, previous.data);
-    if (id === protectedProfile || id === actor.profileId) {
+    if (id === protectedAdminProfileId || id === actor.profileId) {
       throw new ApiError(403, "Este perfil não pode ser alterado pela sua conta.");
     }
     if (previous && previous.data.escopo !== data.escopo) {
@@ -222,18 +222,23 @@ function overlaps(left: RecurringEvent, right: RecurringEvent) {
   return false;
 }
 
-async function verifySchedule(client: PoolClient, id: string, personId: unknown, event: RecordData) {
-  if (event.status === "cancelado") return;
+async function verifySchedule(
+  client: PoolClient,
+  id: string,
+  personId: unknown,
+  event: Pick<ResourceRow, "id" | "data">,
+) {
+  if (event.data.status === "cancelado") return;
 
-  const { rows } = await client.query<{ data: RecordData }>(`
-    SELECT e.data FROM icsv_records s
-    JOIN icsv_records e ON e.id = (s.data->>'eventoId')::uuid
+  const { rows } = await client.query<Pick<ResourceRow, "id" | "data">>(`
+    SELECT e.id, e.data FROM icsv_records s
+    JOIN icsv_records e ON e.id = (s.data->>'eventoId')::uuid AND e.resource = 'eventos'
     WHERE s.resource = 'escalas' AND s.deleted_at IS NULL AND s.id <> $1
       AND s.data->>'pessoaId' = $2 AND s.data->>'status' IN ('pendente', 'confirmada')
-      AND e.deleted_at IS NULL AND e.data->>'status' <> 'cancelado'
-  `, [id, personId]);
+      AND e.deleted_at IS NULL AND (e.id = $3 OR e.data->>'status' <> 'cancelado')
+  `, [id, personId, event.id]);
 
-  if (rows.some((row) => overlaps(asEvent(event), asEvent(row.data)))) {
+  if (rows.some((row) => overlaps(asEvent(event.data), asEvent(row.id === event.id ? event.data : row.data)))) {
     throw new ApiError(409, "A pessoa já possui uma escala com conflito neste horário.");
   }
 }
@@ -271,12 +276,25 @@ async function validateBusinessRules(
     if (rowCount) throw new ApiError(409, "O serviço possui escalas vinculadas a outro ministério.");
   }
 
+  if (resource === "inscricoes" && (data.status === "presente" || data.status === "ausente")) {
+    const changed = ["status", "eventoId", "pessoaId"].some((field) => data[field] !== previous?.data[field]);
+    if (changed && (previous?.data.status === "cancelado" || related.eventoId.data.status === "cancelado")) {
+      throw new ApiError(409, "Uma inscrição ou atividade cancelada não pode receber presença.");
+    }
+  }
+
   if (resource === "escalas") {
     if (related.servicoId.data.ministerioId && related.servicoId.data.ministerioId !== data.ministerioId) {
       throw new ApiError(400, "Este serviço pertence a outro ministério.");
     }
     if (data.status === "pendente" || data.status === "confirmada") {
-      await verifySchedule(client, id, data.pessoaId, related.eventoId.data);
+      const event = related.eventoId;
+      const changed = ["status", "eventoId", "pessoaId", "ministerioId", "servicoId"]
+        .some((field) => data[field] !== previous?.data[field]);
+      if (changed && event.data.status === "cancelado") {
+        throw new ApiError(409, "Uma atividade cancelada não aceita novas alocações ou confirmações na escala.");
+      }
+      await verifySchedule(client, id, data.pessoaId, event);
     }
   }
 
@@ -289,7 +307,7 @@ async function validateBusinessRules(
       SELECT * FROM icsv_records WHERE resource = 'escalas' AND deleted_at IS NULL
       AND data->>'eventoId' = $1 AND data->>'status' IN ('pendente', 'confirmada')
     `, [id]);
-    for (const row of rows) await verifySchedule(client, row.id, row.data.pessoaId, data);
+    for (const row of rows) await verifySchedule(client, row.id, row.data.pessoaId, { id, data });
   }
 }
 

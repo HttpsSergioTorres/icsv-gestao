@@ -1,3 +1,4 @@
+import { eventTime } from '@/lib/domain/occurrences'
 import type { ResourceName } from '@/lib/domain/resources'
 
 export interface SessionUser {
@@ -5,6 +6,8 @@ export interface SessionUser {
   name: string
   email: string
   role: string
+  profileId: string
+  scope: 'campo' | 'congregacao'
   congregacaoId: string | null
   canViewDashboard: boolean
   canViewReports: boolean
@@ -66,7 +69,7 @@ export function formatDate(value: unknown) {
 
 export function formatDateTime(value: unknown) {
   if (typeof value !== 'string') return '—'
-  const date = new Date(value)
+  const date = new Date(eventTime(value))
   return Number.isNaN(date.getTime()) ? '—' : dateTime.format(date)
 }
 

@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { expect, test } from "@playwright/test";
-import { adminEmail, create, demoPassword, label, login, secretaryEmail } from "./support";
+import { adminEmail, create, demoPassword, label, list, login, secretaryEmail } from "./support";
 
 test("autentica pela interface e mantém cadastro após recarregar", async ({ page }) => {
   await page.goto("/");
@@ -102,4 +102,40 @@ test("exibe atividade recorrente nos calendários mensal e semanal", async ({ pa
 
   await page.getByRole("combobox", { name: "Congregação", exact: true }).selectOption(outraCongregacao.id);
   await expect(ocorrencias).toHaveCount(0);
+});
+
+
+test("mantém pessoa ativa ao cadastrar com filtro e preserva campo editado em paralelo", async ({ page }) => {
+  await login(page.request);
+  const congregacao = await create(page.request, "congregacoes", { nome: label("Congregação para cadastro") });
+  const nome = label("Pessoa com filtro");
+  await page.goto("/pessoas");
+  await page.getByRole("combobox", { name: "Ativo", exact: true }).selectOption("true");
+  await page.getByRole("button", { name: "Novo registro" }).click();
+  const dialogo = page.getByRole("dialog");
+  await expect(dialogo.getByRole("checkbox", { name: "Ativo", exact: true })).toBeChecked();
+  await dialogo.getByLabel("Nome", { exact: true }).fill(nome);
+  await dialogo.getByRole("combobox", { name: "Congregação", exact: true }).selectOption(congregacao.id);
+  await dialogo.getByRole("button", { name: "Salvar" }).click();
+  await expect(dialogo).toBeHidden();
+
+  const linha = page.getByRole("row").filter({ hasText: nome });
+  await expect(linha).toBeVisible();
+  const pessoa = (await list(page.request, "pessoas")).find((item) => item.nome === nome);
+  if (!pessoa) throw new Error("Cadastro de teste não encontrado.");
+  expect(pessoa.ativo).toBe(true);
+
+  await linha.getByRole("button", { name: "Editar", exact: true }).click();
+  const novoNome = label("Pessoa editada");
+  await dialogo.getByLabel("Nome", { exact: true }).fill(novoNome);
+  const telefone = "(00) 90000-0000";
+  await expect(await page.request.patch(`/api/pessoas/${pessoa.id}`, {
+    data: { telefone },
+  })).toBeOK();
+  await dialogo.getByRole("button", { name: "Salvar" }).click();
+  await expect(dialogo).toBeHidden();
+
+  const atualizada = page.getByRole("row").filter({ hasText: novoNome });
+  await atualizada.getByRole("button", { name: "Editar", exact: true }).click();
+  await expect(dialogo.getByLabel("Telefone", { exact: true })).toHaveValue(telefone);
 });

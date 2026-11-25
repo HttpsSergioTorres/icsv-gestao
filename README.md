@@ -15,7 +15,39 @@ npm run db:seed
 npm run dev
 ```
 
-Abra `http://localhost:3000`. Para uma base local de demonstração, use `admin@icsv.example` ou `secretaria@icsv.example` com a senha fictícia `ICSV-demo-2026!`. As duas contas têm permissões diferentes. Use o seed apenas com dados fictícios.
+Abra `http://localhost:3000/login`, entre e selecione explicitamente o perfil.
+
+### Demonstração no Windows
+
+Se já tem a cópia em `C:\Projetos\icsv-gestao`, pare o servidor antigo e execute no PowerShell com o Docker Desktop aberto:
+
+```powershell
+cd C:\Projetos\icsv-gestao
+git pull
+docker compose up -d --wait
+npm run db:migrate
+npm run db:seed
+$env:ICSV_KIDS_DEMO = 'true'
+npm run dev -- --hostname 127.0.0.1 --port 3107
+```
+
+Abra `http://127.0.0.1:3107/login`. Use somente bases com dados fictícios para a carga e para o termo Kids de demonstração. No Bash use `ICSV_KIDS_DEMO=true npm run dev` para a mesma opção.
+
+### Contas fictícias
+
+A senha de demonstração é `ICSV-demo-2026!` para todas as contas desta lista. Escolha o perfil indicado depois de entrar.
+
+| Conta | Perfis e caminhos |
+| --- | --- |
+| `admin@icsv.example` | Administração geral, gestão de usuários na sede, avisos, moderação e confirmação de vínculos Kids. |
+| `secretaria@icsv.example` | Secretaria da ICSV San Vale, com os cadastros e a agenda previstos para a função. |
+| `financeiro@icsv.example` | Financeiro com as oito seções, e Tutorial do Sistema. |
+| `comum@icsv.example` | Usuário comum com consulta financeira, Tutorial e Kids com vínculo e aceite fictícios. |
+| `voluntario@icsv.example` | Voluntário vinculado ao ministério de Recepção, com cursos e certificado de exemplo. Também tem Tutorial. |
+| `moderador@icsv.example` | Moderação de avisos e pedidos de oração, e Tutorial. |
+| `responsavel@icsv.example` | Responsável externo com gestão dos próprios vínculos e acesso Kids fictício. |
+
+Consulte o [guia de demonstração e decisões pendentes](EVOLUCAO_ICSV.md).
 
 Para encerrar, pare o servidor com Ctrl+C e execute `docker compose stop`. O volume local mantém os registros.
 
@@ -36,7 +68,7 @@ ICSV_POSTGRES_PORT=55434 docker compose -p icsv-e2e up -d --wait
 export DATABASE_URL=postgresql://icsv:icsv_local@127.0.0.1:55434/icsv
 npm run db:migrate
 npm run db:seed
-npm run dev -- --hostname 127.0.0.1 --port 3101
+ICSV_KIDS_DEMO=true npm run dev -- --hostname 127.0.0.1 --port 3101
 ```
 
 Em outro terminal, no mesmo diretório:

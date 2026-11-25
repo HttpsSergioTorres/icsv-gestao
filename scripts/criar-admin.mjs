@@ -1,6 +1,7 @@
 import { randomBytes, randomUUID, scryptSync } from 'node:crypto';
 import { parseArgs } from 'node:util';
 import { z } from 'zod';
+import { extensionPermissions } from '../src/lib/domain/access.ts';
 import { protectedAdminProfileId, resourceNames } from '../src/lib/domain/resource-names.ts';
 
 const usage = 'Uso: node scripts/criar-admin.mjs --nome "<nome>" --email "<e-mail>"\n'
@@ -79,6 +80,8 @@ async function provision(client, account, passwordHash) {
       permissoes: [
         'dashboard:read',
         'reports:read',
+        ...extensionPermissions.map(({ value }) => value)
+          .filter((grant) => !['kids:play', 'kids:guardian', 'training:learn'].includes(grant)),
         ...resourceNames.flatMap((name) => [`${name}:read`, `${name}:write`]),
       ],
       ativo: true,

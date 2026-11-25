@@ -4,6 +4,8 @@ Este guia descreve a revisão de 24 de novembro de 2026. Ele reúne o comportame
 
 Uma sequência para experimentar o sistema é **entrar → localizar ou cadastrar uma congregação → cadastrar pessoas → organizar ministérios e equipes → criar uma atividade → registrar inscrições, presenças e escalas**. Financeiro e projetos também podem ser usados sem vínculo com uma atividade. O painel e os relatórios consolidam o que já foi registrado.
 
+Os módulos de comunicação, Tutorial, Kids, Financeiro ampliado e Treinamentos estão detalhados no [guia da evolução](EVOLUCAO_ICSV.md).
+
 ## Regras comuns
 
 As listas buscam da API os dados que o perfil pode consultar dentro do seu escopo. A pesquisa textual e os filtros das listas operam no navegador. Filtros e seletores de vínculos dependem da leitura do cadastro relacionado. A escrita precisa da permissão de gerenciamento. A API verifica a permissão e o escopo a cada operação.
@@ -12,7 +14,7 @@ O PostgreSQL persiste os registros, os vínculos e o histórico de mutações. A
 
 ## 1. Acesso à aplicação e painel geral
 
-O ICSV Gestão é a área administrativa da Igreja de Cristo no Brasil, Campo San Vale, e de suas congregações. As telas de gestão consultam a sessão e encaminham para o login quando ela está ausente. O menu lateral tem versão móvel, apresenta as seções que a conta pode consultar e dá acesso ao menu de conta e à saída. O painel de entrada mantém a saudação e os atalhos autorizados mesmo sem permissão para os indicadores.
+O ICSV Gestão é a área administrativa da Igreja de Cristo no Brasil, Campo San Vale, e de suas congregações. As telas de gestão consultam a sessão. Após informar as credenciais, cada conta precisa escolher um dos perfis que lhe foram atribuídos, mesmo quando há um único perfil. A sessão permite trocar de perfil pelo menu da conta. O menu lateral tem versão móvel, apresenta as seções que a conta pode consultar e dá acesso ao menu de conta e à saída. O painel de entrada mantém a saudação e os atalhos autorizados mesmo sem permissão para os indicadores.
 
 O **Painel geral** consulta `/api/dashboard` com a permissão de painel. Os cartões mostram congregações, membros ativos, ministérios, eventos, tarefas pendentes e saldo, conforme a permissão de leitura de cada recurso e o escopo da conta. Os totais vêm do PostgreSQL. Congregações e ministérios incluem registros ativos e inativos. Membros ativos são pessoas de tipo principal **Membro** com situação ativa. Tarefas pendentes incluem as pendentes e as em andamento. O saldo corresponde a receitas menos despesas. A seção **Próximos eventos** requer acesso à agenda e apresenta até seis ocorrências futuras de atividades agendadas, incluindo as recorrentes. A interface trata carregamento, falhas e listas vazias. O painel principal não oferece filtros manuais. Os filtros por congregação e período estão na tela **Relatórios**.
 

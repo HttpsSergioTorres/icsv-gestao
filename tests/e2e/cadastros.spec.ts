@@ -119,7 +119,7 @@ test("redefine senha por código administrativo de uso único e revoga a sessão
 
   const conta = await playwright.request.newContext({ baseURL });
   try {
-    await expect(await conta.post("/api/auth/login", { data: { email, password: senha } })).toBeOK();
+    await login(conta, email, senha);
     await expect(await conta.get("/api/pessoas")).toBeOK();
     expect((await conta.post("/api/pessoas", {
       data: { nome: "Cadastro sem permissão", congregacaoId: congregacao.id },
@@ -136,7 +136,7 @@ test("redefine senha por código administrativo de uso único e revoga a sessão
     expect((await conta.get("/api/pessoas")).status()).toBe(401);
     expect((await conta.post("/api/auth/reset", resetData)).status()).toBe(400);
     expect((await conta.post("/api/auth/login", { data: { email, password: senha } })).status()).toBe(401);
-    await expect(await conta.post("/api/auth/login", { data: { email, password: novaSenha } })).toBeOK();
+    await login(conta, email, novaSenha);
   } finally {
     await conta.dispose();
   }

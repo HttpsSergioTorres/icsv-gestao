@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { extensionPermissions } from "./access";
 import { eventTime } from "./occurrences";
 import { resourceNames, type ResourceName } from "./resource-names";
 
@@ -354,6 +355,7 @@ export const resources: Record<ResourceName, ResourceDefinition> = {
       { key: "email", label: "E-mail", type: "email", required: true },
       { key: "senha", label: "Senha", type: "password", requiredOnCreate: true, writeOnly: true },
       ref("perfilId", "Perfil de acesso", "perfis", true),
+      ref("pessoaId", "Pessoa vinculada (para voluntariado)", "pessoas"),
       { ...congregation, required: false },
       active,
     ],
@@ -361,6 +363,7 @@ export const resources: Record<ResourceName, ResourceDefinition> = {
 };
 
 export const permissionOptions: readonly Option[] = [
+  ...extensionPermissions,
   { value: "dashboard:read", label: "Consultar painel" },
   { value: "reports:read", label: "Consultar relatórios" },
   ...resourceNames.flatMap((resource) => [

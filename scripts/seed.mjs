@@ -1,5 +1,9 @@
 import { randomBytes, scryptSync } from 'node:crypto';
 import { withDatabase } from './db.mjs';
+import { seedCommunications } from './seed-communications.mjs';
+import { seedFinance } from './seed-finance.mjs';
+import { seedKids } from './seed-kids.mjs';
+import { seedTraining } from './seed-training.mjs';
 
 if (process.env.NODE_ENV === 'production') throw new Error('O seed fictício é exclusivo para desenvolvimento.');
 const connection = new URL(process.env.DATABASE_URL ?? 'postgresql://localhost');
@@ -11,7 +15,6 @@ if (!['localhost', '127.0.0.1', '[::1]'].includes(connection.hostname) ||
 const demoPassword = 'ICSV-demo-2026!';
 const id = (suffix) => `10000000-0000-4000-8000-${String(suffix).padStart(12, '0')}`;
 const congregation = id(100);
-const secondCongregation = id(101);
 const person = id(200);
 const volunteer = id(201);
 const ministry = id(300);
@@ -77,8 +80,9 @@ async function insert(client, recordId, resource, payload, links = {}) {
   }
 }
 
-async function makeAccount(client, recordId, nome, email, perfilId, congregacaoId) {
-  await insert(client, recordId, 'usuarios', { nome, email, perfilId, congregacaoId, ativo: true }, { perfilId: 'perfis' });
+async function makeAccount(client, recordId, nome, email, perfilId, congregacaoId, pessoaId) {
+  const links = { perfilId: 'perfis', ...(pessoaId ? { pessoaId: 'pessoas' } : {}) };
+  await insert(client, recordId, 'usuarios', { nome, email, perfilId, congregacaoId, ativo: true, ...(pessoaId ? { pessoaId } : {}) }, links);
   const salt = randomBytes(16).toString('hex');
   const passwordHash = `${salt}:${scryptSync(demoPassword, salt, 64).toString('hex')}`;
   await client.query(`
@@ -90,11 +94,16 @@ await withDatabase(async (client) => {
   await client.query('BEGIN');
   try {
     await client.query("SELECT pg_advisory_xact_lock(hashtext('icsv_record_mutations'))");
-    for (const [index, nome, escopo, permissoes] of profiles) {
+    const grantByProfile = {
+      1: ['finance:manage', 'kids:manage', 'communications:post', 'communications:moderate', 'training:manage', 'tutorial:read'],
+      6: ['finance:manage'],
+      7: ['training:learn'],
+    };
+    for (const [index, nome, escopo, baseline] of profiles) {
+      const permissoes = [...new Set([...baseline, 'communications:use', 'finance:report', ...(grantByProfile[index] ?? [])])];
       await insert(client, id(index), 'perfis', { nome, escopo, permissoes, ativo: true });
     }
-    await insert(client, congregation, 'congregacoes', { nome: 'Sede Campo San Vale', ativo: true });
-    await insert(client, secondCongregation, 'congregacoes', { nome: 'Congregação Jardim das Oliveiras', ativo: true });
+    await insert(client, congregation, 'congregacoes', { nome: 'ICSV San Vale', ativo: true });
     await makeAccount(client, id(21), 'Administração fictícia', 'admin@icsv.example', id(1), null);
     await makeAccount(client, id(22), 'Secretaria fictícia', 'secretaria@icsv.example', id(2), congregation);
 
@@ -106,7 +115,7 @@ await withDatabase(async (client) => {
       ...personDefaults, nome: 'Voluntária Demonstração', tipo: 'voluntario', congregacaoId: congregation,
     });
     await insert(client, id(202), 'pessoas', {
-      ...personDefaults, nome: 'Visitante Demonstração', tipo: 'visitante', congregacaoId: secondCongregation,
+      ...personDefaults, nome: 'Visitante Demonstração', tipo: 'visitante', congregacaoId: congregation,
     });
     await insert(client, ministry, 'ministerios', {
       nome: 'Recepção — demonstração', tipo: 'ministerio', congregacaoId: congregation, liderId: person, ativo: true,
@@ -142,6 +151,29 @@ await withDatabase(async (client) => {
     await insert(client, id(801), 'tarefas', {
       titulo: 'Conferir materiais', projetoId: project, congregacaoId: congregation, prazo: date, status: 'pendente',
     }, { projetoId: 'projetos' });
+
+    await makeAccount(client, id(23), 'Consulta fictícia', 'comum@icsv.example', id(10), congregation);
+    await makeAccount(client, id(24), 'Voluntária fictícia', 'voluntario@icsv.example', id(7), congregation, volunteer);
+    await makeAccount(client, id(25), 'Financeiro fictício', 'financeiro@icsv.example', id(6), congregation);
+    await makeAccount(client, id(26), 'Moderação fictícia', 'moderador@icsv.example', id(14), congregation);
+
+    for (const [userId, profileIds] of [[id(23), [id(10), id(13)]], [id(24), [id(7), id(13)]], [id(25), [id(6), id(13)]], [id(26), [id(14), id(13)]]]) {
+      await client.query('INSERT INTO icsv_managed_accounts (user_id) VALUES ($1) ON CONFLICT DO NOTHING', [userId]);
+      for (const profileId of profileIds) {
+        await client.query(`
+          INSERT INTO icsv_access_assignments (user_id, profile_id, congregation_id)
+          VALUES ($1, $2, $3) ON CONFLICT DO NOTHING
+        `, [userId, profileId, congregation]);
+      }
+    }
+    const fixtures = {
+      id, congregationId: congregation, adminId: id(21), ordinaryUserId: id(23), volunteerUserId: id(24),
+      personId: person, volunteerPersonId: volunteer, ministryId: ministry,
+    };
+    await seedCommunications(client, fixtures);
+    await seedFinance(client, fixtures);
+    await seedKids(client, fixtures);
+    await seedTraining(client, fixtures);
 
     await client.query('COMMIT');
     console.log('Dados fictícios disponíveis na base de desenvolvimento.');

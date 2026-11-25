@@ -1,0 +1,114 @@
+.tutorial {
+  display: grid;
+  gap: 1.8rem;
+}
+
+.tutorial-opening {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1.2rem;
+  min-height: 11.5rem;
+  padding: 1rem clamp(1.25rem, 3vw, 2.6rem);
+  border: 1px solid #2d5682;
+  border-radius: .95rem;
+  color: #fff;
+  background: linear-gradient(115deg, var(--navy-deep), #1e4b7c);
+}
+
+.tutorial-opening h1 {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: clamp(2rem, 4.5vw, 3.4rem);
+  font-weight: 600;
+  line-height: 1.13;
+}
+
+.tutorial-opening p {
+  margin-top: .6rem;
+  color: #e1ebf9;
+  font-size: 1rem;
+}
+
+.tutorial-mascot {
+  width: clamp(5.5rem, 24vw, 13rem);
+  height: auto;
+  flex: 0 0 auto;
+}
+
+.tutorial-title {
+  margin: 0 0 .75rem;
+  color: var(--navy);
+  font-family: var(--font-heading);
+  font-size: 1.4rem;
+  font-weight: 600;
+}
+
+.tutorial-guides {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15.5rem), 1fr));
+  gap: .85rem;
+}
+
+.tutorial-guide {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: .8rem;
+  padding: 1rem;
+  border: 1px solid var(--surface-lines);
+  border-radius: .75rem;
+  background: white;
+}
+
+.tutorial-guide-icon {
+  display: grid;
+  width: 2.45rem;
+  height: 2.45rem;
+  place-items: center;
+  border-radius: .6rem;
+  color: var(--primary);
+  background: #e7f0fb;
+}
+
+.tutorial-guide h3 {
+  color: var(--navy);
+  font-size: 1.07rem;
+  font-weight: 850;
+}
+
+.tutorial-guide ol {
+  display: grid;
+  gap: .5rem;
+  padding-left: 1.4rem;
+  list-style: decimal;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.tutorial-guide li::marker {
+  color: var(--primary);
+  font-weight: 850;
+}
+
+.tutorial-guide .btn {
+  margin-top: auto;
+}
+
+.tutorial :is(#mural-avisos, #pedidos-oracao) {
+  scroll-margin-top: 5rem;
+}
+
+@media (max-width: 480px) {
+  .tutorial-opening {
+    gap: .25rem;
+  }
+
+  .tutorial-opening p {
+    font-size: .9rem;
+  }
+
+  .tutorial-opening h1 {
+    font-size: 1.95rem;
+  }
+}

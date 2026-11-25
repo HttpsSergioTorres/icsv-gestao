@@ -2,11 +2,23 @@
 
 :root {
   color-scheme: light;
-  --teal: #006666;
+  --navy-deep: #0b203a;
+  --navy: #102849;
+  --primary: #194375;
+  --primary-hover: #13365e;
+  --focus: #2467ad;
+  --surface: #fff;
+  --surface-lines: #dce4ef;
+  --field-lines: #7890ad;
+  --surface-muted: #f5f8fc;
+  --text-muted: #485b72;
+  --error: #9b2b29;
+  --teal: var(--primary);
+  --forest: var(--navy);
   --beige: #f2da94;
   --mustard: #bf7e06;
   --muted-lines: #d3d3d3;
-  --ink: #1a1918;
+  --ink: #172b44;
   --font-heading: "Oswald", "Arial Narrow", sans-serif;
   --font-body: "Nunito Sans", system-ui, sans-serif;
 }
@@ -14,7 +26,7 @@
 body {
   margin: 0;
   color: var(--ink);
-  background: #f6f7f4;
+  background: var(--surface-muted);
   font-family: var(--font-body);
   font-synthesis: none;
 }
@@ -24,7 +36,7 @@ button:not(:disabled) {
 }
 
 :focus-visible {
-  outline: 2px solid var(--teal);
+  outline: 2px solid var(--focus);
   outline-offset: 3px;
 }
 
@@ -37,12 +49,19 @@ button:not(:disabled) {
 
 .marca-simbolo {
   display: grid;
-  width: 2.5rem;
-  height: 2.5rem;
+  flex: 0 0 auto;
+  width: 2.9rem;
+  height: 2.9rem;
   place-items: center;
-  border-radius: .75rem;
-  color: #005b53;
-  background: var(--beige);
+  border: 1px solid #537599;
+  border-radius: .72rem;
+  background: var(--navy-deep);
+}
+
+.marca-simbolo img {
+  display: block;
+  width: 100%;
+  height: auto;
 }
 
 .marca-nome {

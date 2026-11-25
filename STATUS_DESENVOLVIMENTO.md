@@ -22,3 +22,7 @@ A primeira versão local foi implementada a partir do briefing do ICSV Gestão. 
 - As inscrições, confirmações e escalas de uma série referenciam a atividade-base. A edição por ocorrência pode ser avaliada após a definição do processo institucional.
 - A integração Supabase ainda depende de configuração e validação. A execução verificada usa PostgreSQL local.
 - O ambiente de produção e o workflow remoto do GitHub Actions ainda não foram exercitados.
+
+## Evolução da sede
+
+A seleção explícita por perfil e congregação, o Financeiro ampliado, o mural com moderação, o espaço Kids, o Tutorial e os treinamentos estão disponíveis. O [guia de evolução](EVOLUCAO_ICSV.md) descreve a operação e os limites. O [relatório de testes](RELATORIO_TESTES.md) registra a revisão integrada.

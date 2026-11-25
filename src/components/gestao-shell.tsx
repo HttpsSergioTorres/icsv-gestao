@@ -8,6 +8,7 @@ import {
   ClipboardList, Clock3, LayoutDashboard, LogOut, Menu, Network, PanelTop,
   Settings2, ShieldCheck, Tags, Ticket, UserCog, UserRound, Users, Wallet, X,
 } from 'lucide-react'
+import { financeSections } from "@/lib/domain/finance"
 import type { ResourceName } from '@/lib/domain/resources'
 import { api, messageOf, type SessionUser } from './client-api'
 import { Marca } from './marca'
@@ -40,10 +41,23 @@ const groups = [
     ],
   },
   {
+    title: 'Formação e família',
+    links: [
+      { href: '/treinamentos', label: 'Treinamentos', icon: ClipboardList },
+      { href: '/tutorial', label: 'Tutorial do Sistema', icon: CircleHelp },
+      { href: '/kids', label: 'Espaço Kids', icon: Church },
+      { href: '/kids/vinculos', label: 'Vínculos Kids', icon: ShieldCheck },
+      { href: '/responsavel', label: 'Meus vínculos Kids', icon: Users },
+    ],
+  },
+  {
+    title: 'Financeiro',
+    links: financeSections.map(({ slug, label }) => ({ href: `/financeiro/${slug}`, label, icon: Wallet })),
+  },
+  {
     title: 'Administração',
     links: [
-      { href: '/movimentacoes', label: 'Financeiro', icon: Wallet, resource: 'movimentacoes' },
-      { href: '/categorias', label: 'Categorias financeiras', icon: Tags, resource: 'categorias' },
+
       { href: '/relatorios', label: 'Relatórios', icon: ChartNoAxesCombined },
       { href: '/usuarios', label: 'Usuários', icon: UserCog, resource: 'usuarios' },
       { href: '/perfis', label: 'Perfis de acesso', icon: ShieldCheck, resource: 'perfis' },
@@ -88,9 +102,9 @@ export function GestaoShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     const controller = new AbortController()
 
-    api<{ user: SessionUser | null }>('/api/auth/session', { signal: controller.signal })
-      .then(({ user: currentUser }) => {
-        if (!currentUser) router.replace('/login')
+    api<{ user: SessionUser | null; authenticated: boolean }>('/api/auth/session', { signal: controller.signal })
+      .then(({ user: currentUser, authenticated }) => {
+        if (!currentUser) router.replace(authenticated ? '/selecionar-perfil' : '/login')
         else setUser(currentUser)
       })
       .catch((failure: unknown) => {
@@ -197,12 +211,20 @@ export function GestaoShell({ children }: { children: ReactNode }) {
         {open && <div className="sidebar-overlay" aria-hidden="true" onClick={() => closeMenu('toggle')} />}
         <aside ref={sidebar} className={`sidebar${open ? ' sidebar-open' : ''}`} id="menu-principal"
           role={open ? 'dialog' : undefined} aria-modal={open || undefined} aria-label={open ? 'Menu principal' : undefined}>
-          <Link className="sidebar-brand" href="/" onNavigate={navigateFromMenu} aria-label="ICSV Gestão, painel geral"><Marca /></Link>
+          <Link className="sidebar-brand" href={user.home} onNavigate={navigateFromMenu} aria-label="ICSV Gestão, painel geral"><Marca /></Link>
           <button ref={menuClose} className="icon-button sidebar-close" type="button" aria-label="Fechar menu" onClick={() => closeMenu('toggle')}><X size={20} /></button>
           <nav className="side-nav" aria-label="Navegação principal">
             {groups.map(({ title, links }) => {
               const allowed = links.filter((link) => {
+                if (link.href.startsWith('/financeiro/')) return user.grants.includes('finance:manage')
+                  || (link.href.endsWith('/relatorios') && user.grants.includes('finance:report'))
                 if (link.href === '/relatorios') return user.canViewReports
+                if (link.href === '/treinamentos') return user.grants.some((grant) => grant.startsWith('training:'))
+                if (link.href === '/tutorial') return user.grants.includes('tutorial:read')
+                if (link.href === '/kids') return user.grants.includes('kids:play')
+                if (link.href === '/kids/vinculos') return user.grants.includes('kids:manage')
+                if (link.href === '/responsavel') return user.grants.includes('kids:guardian') || user.grants.includes('communications:use') && !user.grants.includes('kids:play')
+                if (link.href === '/' && ['/kids', '/responsavel', '/tutorial'].includes(user.home)) return false
                 return !('resource' in link) || !link.resource || user.permissions[link.resource]?.read
               })
               if (!allowed.length) return null
@@ -223,6 +245,7 @@ export function GestaoShell({ children }: { children: ReactNode }) {
             <div className="topbar-left">
               <button ref={menuToggle} className="icon-button menu-toggle" type="button" aria-label="Abrir menu"
                 aria-controls="menu-principal" aria-expanded={open} onClick={() => { setProfileOpen(false); setOpen(true) }}><Menu size={22} /></button>
+              <Link href={user.home} className="topbar-mobile-brand" aria-label="ICSV Gestão"><Marca compacta /></Link>
               <span className="topbar-location"><span>Gestão</span><ArrowRight size={13} aria-hidden="true" /><strong>{location}</strong></span>
             </div>
             <div className="profile">
@@ -233,6 +256,7 @@ export function GestaoShell({ children }: { children: ReactNode }) {
               </button>
               {profileOpen && <div className="profile-popover">
                 <p>{user.email}</p>
+                <Link className="profile-action" href="/selecionar-perfil" onClick={() => setProfileOpen(false)}><ShieldCheck size={16} aria-hidden="true" />Trocar perfil</Link>
                 <Link className="profile-action" href="/minha-conta" onClick={() => setProfileOpen(false)}><UserRound size={16} aria-hidden="true" />Minha conta</Link>
                 <button type="button" className="profile-action" disabled={leaving} onClick={signOut}><LogOut size={16} />{leaving ? 'Saindo…' : 'Sair'}</button>
                 {logoutError && <p role="alert">{logoutError}</p>}

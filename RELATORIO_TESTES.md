@@ -63,3 +63,24 @@ As suítes usam dados fictícios. No Codex, os testes utilizaram o Chromium disp
 - **Navegação dos módulos.** O Chromium abriu 17 telas e aguardou a agenda, os relatórios, os indicadores ou os filtros de cada cadastro após o carregamento dos dados.
 - **Cadastros.** A criação de pessoa com filtro de ativos manteve a situação ativa no formulário e no banco. Uma edição de nome pelo formulário preservou um telefone atualizado em paralelo. Uma verificação adicional constatou a ausência de ações incompatíveis na própria conta e no perfil protegido.
 - **Atividades e escalas.** A API rejeitou alterações de presença e confirmação de escala em registros cancelados. A reativação em horário conflitante preservou a atividade cancelada, e a reativação em outro horário foi aceita. A lista e a edição foram verificadas com um horário local sem offset e um horário UTC que corresponde ao dia anterior em Brasília.
+
+## Evolução da sede ICSV San Vale
+
+| Verificação | Resultado observado |
+| --- | --- |
+| Checagem de tipos e build de produção | Aprovados. |
+| Vitest | 15/15 testes aprovados. |
+| Playwright no build final | 27/27 cenários aprovados em 35,2 s, com Chromium e PostgreSQL 17 isolado. |
+| Instalação da base | Migrações aprovadas em uma base vazia e em uma base preparada pelo código anterior. O acesso administrativo, a sede e o lançamento legado conferido foram preservados na atualização. |
+| Carga fictícia idempotente | Após duas execuções em base nova, as contagens verificadas se mantiveram. A base tem uma sede, sete usuários, sete movimentações, duas aceitações Kids e um certificado de demonstração. |
+| Configuração Kids sem termo | Com a demonstração desativada e sem termo oficial, o aceite fictício não disponibilizou o perfil Kids. |
+
+### Cenários conferidos
+
+- **Perfis e marca.** A administração criou uma conta na sede e atribuiu dois perfis pelo formulário. A conta viu somente essas opções, trocou o perfil em uso e recebeu bloqueio nas rotas fora dos seus direitos. Uma conta sem atribuição vigente recebeu orientação para procurar a administração. O ícone oficial da entrada e da aba, o fundo azul-escuro e o mascote do Tutorial foram verificados no navegador.
+- **Financeiro.** O financeiro viu as oito seções e conciliou a entrada e a saída com o saldo do extrato. O perfil comum viu somente Relatórios no menu financeiro. As rotas administrativas e a consulta de outra congregação retornaram bloqueio.
+- **Kids.** Um responsável externo fez cadastro e solicitou vínculo. O Kids ficou indisponível enquanto o vínculo estava pendente ou o termo não tinha sido aceito. Após a confirmação e o aceite, a conta abriu as histórias e concluiu o jogo. Revogar o vínculo removeu o acesso.
+- **Mural e pedidos.** O pendente ficou restrito ao autor e à moderação autorizada. O rejeitado não apareceu no mural. Um aprovado como anônimo ficou sem identificação na resposta pública. O público Kids e a presença do mural no Tutorial foram exercitados.
+- **Treinamentos.** O vínculo ativo na equipe liberou os cursos pertinentes, e o gabarito ficou no servidor. Envios inválidos e reenvio da mesma entrega não consumiram tentativa adicional. A quarta tentativa foi recusada. Uma conta aprovada recebeu o certificado após a aula obrigatória e recuperou o certificado ao recarregar a tela.
+
+A execução foi local. Produção e o workflow remoto permanecem fora desta verificação.

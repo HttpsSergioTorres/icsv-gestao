@@ -6,6 +6,8 @@ export interface SessionUser {
   name: string
   email: string
   role: string
+  grants: string[]
+  home: string
   profileId: string
   scope: 'campo' | 'congregacao'
   congregacaoId: string | null

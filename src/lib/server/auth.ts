@@ -4,6 +4,10 @@ import { cookies } from "next/headers";
 import { type PoolClient } from "pg";
 import { database, recordTransaction } from "./db";
 import { ApiError } from "./http";
+import { profileHome, specialProfiles } from "@/lib/domain/access";
+import { protectedAdminProfileId } from "@/lib/domain/resource-names";
+import { hasKidsAccess } from "./kids-access";
+import { managedAccessProfiles } from "./access-admin";
 import { resourceNames, type ResourceName } from "@/lib/domain/resources";
 
 const deriveKey = promisify(scrypt);
@@ -17,6 +21,7 @@ export type Actor = {
   email: string;
   role: string;
   profileId: string;
+  pessoaId?: string | null;
   scope: "campo" | "congregacao";
   congregacaoId: string | null;
   grants: Set<string>;
@@ -26,38 +31,43 @@ type AccountRow = {
   id: string;
   name: string;
   email: string;
+  person_id: string | null;
+  password_hash: string;
+};
+
+type AccessRow = {
+  assignment_id: string;
   role: string;
   profile_id: string;
   scope: Actor["scope"];
   congregation_id: string | null;
   grants: string[];
-  password_hash: string;
+  congregation: string | null;
 };
 
 const accounts = `
   SELECT u.id, u.data->>'nome' AS name, u.data->>'email' AS email,
-    p.data->>'nome' AS role, p.id AS profile_id, p.data->>'escopo' AS scope,
-    u.congregation_id, p.data->'permissoes' AS grants, cred.password_hash
-  FROM icsv_records u
-  JOIN icsv_credentials cred ON cred.user_id = u.id
-  JOIN icsv_records p ON p.id = (u.data->>'perfilId')::uuid AND p.resource = 'perfis'
-  LEFT JOIN icsv_records c ON c.id = u.congregation_id
+    u.data->>'pessoaId' AS person_id, cred.password_hash
+  FROM icsv_records u JOIN icsv_credentials cred ON cred.user_id = u.id
   WHERE u.resource = 'usuarios' AND u.deleted_at IS NULL AND u.data->>'ativo' = 'true'
-    AND p.deleted_at IS NULL AND p.data->>'ativo' = 'true'
-    AND (p.data->>'escopo' = 'campo' OR
-      (c.resource = 'congregacoes' AND c.deleted_at IS NULL AND c.data->>'ativo' = 'true'))
 `;
 
-function toActor(row: AccountRow): Actor {
+function toActor(account: AccountRow, access: AccessRow): Actor {
+  const base = access.grants.includes("finance:manage") ? access.grants
+    : access.grants.filter((grant) => !/^(movimentacoes|categorias):/.test(grant));
+  const grants = base.includes("kids:play")
+    ? base.filter((grant) => grant === "kids:play" || grant === "communications:use")
+    : base.includes("kids:guardian") ? ["kids:guardian"] : [...base, "communications:use"];
   return {
-    id: row.id,
-    name: row.name,
-    email: row.email,
-    role: row.role,
-    profileId: row.profile_id,
-    scope: row.scope,
-    congregacaoId: row.congregation_id,
-    grants: new Set(row.grants),
+    id: account.id,
+    name: account.name,
+    email: account.email,
+    role: access.role,
+    profileId: access.profile_id,
+    pessoaId: account.person_id,
+    scope: access.congregation_id ? "congregacao" : access.scope,
+    congregacaoId: access.congregation_id,
+    grants: new Set(grants),
   };
 }
 
@@ -69,6 +79,8 @@ export function publicUser(actor: Actor) {
     role: actor.role,
     profileId: actor.profileId,
     scope: actor.scope,
+    grants: [...actor.grants],
+    home: profileHome(actor.grants),
     congregacaoId: actor.congregacaoId,
     permissions: Object.fromEntries(resourceNames.map((name) => [name, {
       read: actor.grants.has(`${name}:read`),
@@ -94,6 +106,8 @@ export function assertCanManageProfile(
   if (actor.scope === "congregacao" && data.escopo !== "congregacao") {
     throw new ApiError(403, "O perfil precisa ter escopo de congregação.");
   }
+
+  if (actor.profileId === protectedAdminProfileId && actor.scope === "campo") return;
 
   if (data.permissoes.some((permission) => !actor.grants.has(permission))) {
     throw new ApiError(403, "Este perfil possui permissões que sua conta não pode administrar.");
@@ -127,19 +141,79 @@ function cookieOptions() {
 async function getSessionAccount(client?: PoolClient) {
   const token = (await cookies()).get(sessionCookie)?.value;
   if (!token || !/^[0-9a-f]{64}$/.test(token)) return null;
+  const tokenHash = hashToken(token);
 
-  const { rows } = await (client ?? database()).query<AccountRow>(`
-    ${accounts} AND EXISTS (
-      SELECT 1 FROM icsv_sessions s
-      WHERE s.user_id = u.id AND s.token_hash = $1 AND s.expires_at > now()
-    )
-  `, [hashToken(token)]);
-  return rows[0] ?? null;
+  const { rows } = await (client ?? database()).query<AccountRow & { assignment_id: string | null }>(`
+    SELECT a.*, s.assignment_id FROM (${accounts}) a
+    JOIN icsv_sessions s ON s.user_id = a.id AND s.token_hash = $1 AND s.expires_at > now()
+  `, [tokenHash]);
+  return rows[0] ? { ...rows[0], tokenHash } : null;
+}
+
+export async function getAuthenticatedAccount(client?: PoolClient) {
+  const row = await getSessionAccount(client);
+  return row ? { id: row.id, name: row.name, email: row.email } : null;
+}
+
+export async function requireAuthenticatedAccount(client?: PoolClient) {
+  const account = await getAuthenticatedAccount(client);
+  if (!account) throw new ApiError(401, "Entre na sua conta para continuar.");
+  return account;
+}
+
+async function accessFor(userId: string, client?: PoolClient, assignmentId?: string) {
+  const { rows } = await (client ?? database()).query<AccessRow>(`
+    SELECT a.id AS assignment_id, p.id AS profile_id, p.data->>'nome' AS role,
+      p.data->>'escopo' AS scope, p.data->'permissoes' AS grants,
+      a.congregation_id, c.data->>'nome' AS congregation
+    FROM icsv_account_access a
+    JOIN icsv_records p ON p.id = a.profile_id AND p.resource = 'perfis'
+    LEFT JOIN icsv_records c ON c.id = a.congregation_id AND c.resource = 'congregacoes'
+    LEFT JOIN icsv_managed_accounts m ON m.user_id = a.user_id
+    WHERE a.user_id = $1 AND ($2::uuid IS NULL OR a.id = $2)
+      AND p.deleted_at IS NULL AND p.data->>'ativo' = 'true'
+      AND (CASE WHEN a.congregation_id IS NULL THEN p.data->>'escopo' = 'campo'
+        ELSE c.deleted_at IS NULL AND c.data->>'ativo' = 'true' END)
+      AND (m.external_guardian IS DISTINCT FROM true OR p.id IN ($3, $4))
+    ORDER BY p.data->>'nome', c.data->>'nome', a.id
+  `, [userId, assignmentId ?? null, specialProfiles.guardian, specialProfiles.kids]);
+  const allowed = await Promise.all(rows.map(async (row) => (
+    !row.grants.includes("kids:play") || await hasKidsAccess(userId, row.congregation_id, client)
+  )));
+  return rows.filter((_, index) => allowed[index]);
+}
+
+export async function listSessionProfiles() {
+  const account = await getSessionAccount();
+  if (!account) throw new ApiError(401, "Entre na sua conta para continuar.");
+  return (await accessFor(account.id)).map((access) => ({
+    id: access.assignment_id,
+    nome: access.role,
+    congregacaoId: access.congregation_id,
+    congregacao: access.congregation ?? "Administração do campo",
+    selected: access.assignment_id === account.assignment_id,
+  }));
+}
+
+export async function selectSessionProfile(assignmentId: string) {
+  return recordTransaction(async (client) => {
+    const account = await getSessionAccount(client);
+    if (!account) throw new ApiError(401, "Entre na sua conta para continuar.");
+    const [access] = await accessFor(account.id, client, assignmentId);
+    if (!access) throw new ApiError(403, "Este perfil não está disponível para sua conta.");
+    const result = await client.query(`
+      UPDATE icsv_sessions SET assignment_id = $2 WHERE token_hash = $1 AND expires_at > now()
+    `, [account.tokenHash, access.assignment_id]);
+    if (!result.rowCount) throw new ApiError(401, "Sua sessão expirou.");
+    return toActor(account, access);
+  });
 }
 
 export async function getUser(client?: PoolClient) {
   const account = await getSessionAccount(client);
-  return account ? toActor(account) : null;
+  if (!account?.assignment_id) return null;
+  const [access] = await accessFor(account.id, client, account.assignment_id);
+  return access ? toActor(account, access) : null;
 }
 
 export async function requireUser(client?: PoolClient) {
@@ -174,7 +248,7 @@ export async function login(email: string, password: string) {
   if (!valid || !row) throw new ApiError(401, "E-mail ou senha inválidos.");
 
   const token = randomBytes(32).toString("hex");
-  const account = await recordTransaction(async (client) => {
+  await recordTransaction(async (client) => {
     const { rows: current } = await client.query<AccountRow>(`
       ${accounts} AND u.id = $1 FOR UPDATE OF cred
     `, [row.id]);
@@ -188,11 +262,9 @@ export async function login(email: string, password: string) {
       VALUES ($1, $2, now() + $3 * interval '1 second')
     `, [hashToken(token), row.id, sessionLifetimeSeconds]);
     await client.query("DELETE FROM icsv_login_attempts WHERE email_hash = $1", [hashToken(email)]);
-    return current[0];
   });
 
   (await cookies()).set(sessionCookie, token, { ...cookieOptions(), maxAge: sessionLifetimeSeconds });
-  return toActor(account);
 }
 
 export async function logout() {
@@ -237,6 +309,17 @@ export async function changeOwnPassword(currentPassword: string, newPassword: st
   (await cookies()).set(sessionCookie, "", { ...cookieOptions(), maxAge: 0 });
 }
 
+export async function assertManageAccount(actor: Actor, userId: string, client: PoolClient) {
+  const assignments = await managedAccessProfiles(client, userId);
+  if (actor.scope === "congregacao" && (!assignments.length ||
+      assignments.some((assignment) => assignment.congregationId !== actor.congregacaoId))) {
+    throw new ApiError(404, "Conta não encontrada no escopo autorizado.");
+  }
+  for (const assignment of assignments) {
+    assertCanManageProfile(actor, { escopo: assignment.scope, permissoes: assignment.grants });
+  }
+}
+
 export async function issueRecovery(email: string) {
   return recordTransaction(async (client) => {
     const actor = await requireUser(client);
@@ -248,11 +331,11 @@ export async function issueRecovery(email: string) {
       ${accounts} AND lower(u.data->>'email') = $1 FOR UPDATE OF cred
     `, [email]);
     const row = rows[0];
-    if (!row || (actor.scope === "congregacao" && actor.congregacaoId !== row.congregation_id)) {
+    if (!row) {
       throw new ApiError(404, "Conta ativa não encontrada.");
     }
 
-    assertCanManageProfile(actor, { escopo: row.scope, permissoes: row.grants });
+    await assertManageAccount(actor, row.id, client);
     const token = randomBytes(24).toString("base64url");
     const { rows: recovery } = await client.query<{ expires_at: Date }>(`
       INSERT INTO icsv_recovery (token_hash, user_id, expires_at)

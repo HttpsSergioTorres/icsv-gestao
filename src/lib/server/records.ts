@@ -3,8 +3,9 @@ import { type PoolClient } from "pg";
 import { z } from "zod";
 import { eventTime, iterateOccurrences, type RecurringEvent } from "@/lib/domain/occurrences";
 import { getResourceSchema, isResourceName, resources, type ResourceName } from "@/lib/domain/resources";
-import { protectedAdminProfileId } from "@/lib/domain/resource-names";
-import { assertCanManageProfile, assertGrant, hashPassword, requireUser, updatePassword, type Actor } from "./auth";
+import { headquarters, isManagedAccount, isSystemProfile, setUserAssignments } from "./access-admin";
+import { specialProfiles } from "@/lib/domain/access";
+import { assertManageAccount, assertCanManageProfile, assertGrant, hashPassword, requireUser, updatePassword, type Actor } from "./auth";
 import { database, recordTransaction } from "./db";
 import { ApiError } from "./http";
 
@@ -154,13 +155,17 @@ async function prepareRecord(
         congregationId !== actor.congregacaoId)) {
       throw new ApiError(403, "Outra conta administrativa precisa alterar estas opções da sua conta.");
     }
-    if (previous) verifyProfile(actor, (await profile(client, previous.data.perfilId)).data);
+    if (previous && id !== actor.id) await assertManageAccount(actor, id, client);
+    if (previous && await isManagedAccount(client, id) &&
+      (previous.data.perfilId !== data.perfilId || previous.congregation_id !== congregationId)) {
+      throw new ApiError(400, "Use os acessos da conta para gerenciar os perfis atribuídos.");
+    }
   }
 
   if (resource === "perfis") {
     verifyProfile(actor, data);
     if (previous) verifyProfile(actor, previous.data);
-    if (id === protectedAdminProfileId || id === actor.profileId) {
+    if (isSystemProfile(id) || id === actor.profileId) {
       throw new ApiError(403, "Este perfil não pode ser alterado pela sua conta.");
     }
     if (previous && previous.data.escopo !== data.escopo) {
@@ -393,8 +398,30 @@ async function writeHistory(
 
 export async function createRecord(actor: Actor, resource: ResourceName, input: unknown) {
   assertWrite(actor, resource);
-  const data = getResourceSchema(resource).parse(input);
-  return mutate(resource, (client, current) => {
+  return mutate(resource, async (client, current) => {
+    if (resource === "usuarios" && input && typeof input === "object" && "acessos" in input) {
+      const { acessos, ...fields } = input;
+      const { id: congregationId } = await headquarters(client);
+      const parsed = z.array(z.uuid()).min(1, "Selecione pelo menos um perfil.").max(30).parse(acessos);
+      const profileIds = [...new Set(parsed)];
+      if ((fields as Record<string, unknown>).congregacaoId !== congregationId ||
+          (current.scope === "congregacao" && current.congregacaoId !== congregationId)) {
+        throw new ApiError(400, "Selecione a sede ICSV San Vale para estes acessos.");
+      }
+      for (const profileId of profileIds) {
+        const target = await profile(client, profileId);
+        if (target.data.ativo !== true || target.data.escopo !== "congregacao" ||
+          profileId === specialProfiles.guardian || profileId === specialProfiles.kids) {
+          throw new ApiError(400, "Um perfil selecionado não está disponível para atribuição.");
+        }
+        verifyProfile(current, target.data);
+      }
+      const data = getResourceSchema("usuarios").parse({ ...fields, perfilId: profileIds[0] });
+      const item = await save(client, current, resource, randomUUID(), data);
+      await setUserAssignments(client, item.id, profileIds, congregationId);
+      return item;
+    }
+    const data = getResourceSchema(resource).parse(input);
     if (resource === "congregacoes" && current.scope !== "campo") {
       throw new ApiError(403, "A criação de congregações exige escopo de campo.");
     }

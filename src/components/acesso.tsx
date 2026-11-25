@@ -34,7 +34,7 @@ export function TelaLogin({ senhaAlterada }: { senhaAlterada: boolean }) {
     setBusy(true)
     try {
       await api('/api/auth/login', write('POST', { email: data.get('email'), password: data.get('password') }))
-      router.replace('/')
+      router.replace('/selecionar-perfil')
       router.refresh()
     } catch (failure) {
       setError(messageOf(failure, 'Não foi possível entrar. Tente novamente.'))
@@ -57,6 +57,7 @@ export function TelaLogin({ senhaAlterada }: { senhaAlterada: boolean }) {
           <button type="button" className="icon-button" aria-label={shown ? 'Ocultar senha' : 'Mostrar senha'} onClick={() => setShown(!shown)}>{shown ? <EyeOff size={18} /> : <Eye size={18} />}</button>
         </div>
         <Link className="auth-recover" href="/recuperar-acesso">Esqueci minha senha</Link>
+        <Link className="auth-back" href="/responsavel/cadastro">Cadastro de responsável externo</Link>
         {error && <p className="alert" role="alert">{error}</p>}
         <button className="btn btn-primary auth-submit" type="submit" disabled={busy}>{busy ? 'Entrando…' : 'Entrar'}<ArrowRight size={18} aria-hidden="true" /></button>
       </form>

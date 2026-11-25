@@ -1,0 +1,129 @@
+.kids-portal {
+  min-height: 100svh;
+  padding: clamp(1.25rem, 5vw, 3.5rem) 1rem 4rem;
+  background: radial-gradient(ellipse at 76% -40%, #a7cefb 0, transparent 56%), #eef4fb;
+}
+.kids-portal-brand { max-width: 44rem; margin: 0 auto 1.25rem; color: #102849; }
+.kids-paper {
+  border: 1px solid #d9e4f0;
+  border-radius: 1.25rem;
+  padding: clamp(1rem, 4vw, 2rem);
+  background: #fff;
+  box-shadow: 0 12px 36px rgb(11 32 58 / 7%);
+}
+.kids-portal > .kids-paper { max-width: 44rem; margin: auto; }
+.kids-paper-header { margin-bottom: 1.5rem; }
+.kids-paper-header h1 { margin-top: .65rem; font-size: clamp(1.8rem, 5vw, 2.5rem); }
+.kids-paper-header p,.kids-muted { color: #455d79; }
+.kids-form { display: grid; gap: .85rem; align-items: end; }
+.kids-form label { display: grid; gap: .3rem; font-weight: 700; }
+.kids-form input,.kids-form select {
+  background: #f7faff;
+  border: 1px solid #b9cbe0;
+  border-radius: .55rem;
+  box-sizing: border-box;
+  padding: .6rem .7rem;
+  width: 100%;
+  min-height: 2.75rem;
+}
+.kids-form button,.kids-form a { justify-self: start; }
+.kids-portal-actions { display: flex; justify-content: flex-end; margin: -1.5rem 0 1rem; }
+.kids-invite-form { grid-template-columns: minmax(0, 1fr) auto; }
+.kids-links { display: grid; gap: 1rem; margin-top: 2rem; }
+.kids-link-item { display: grid; gap: .6rem; border: 1px solid #d9e4f0; padding: .85rem 1rem; border-radius: .85rem; }
+.kids-link-title { display: flex; gap: .5rem .75rem; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.kids-badge { padding: .22rem .6rem; border-radius: 999px; color: #153966; background: #e7f0fc; font-size: .85rem; font-weight: 700; }
+.kids-paper h2,.kids-paper h3,.kids-paper h4 { color: #102849; }
+.kids-enabled,.kids-success {
+  padding: .75rem .85rem;
+  border-radius: .6rem;
+  color: #12543d;
+  background: #e9f7ef;
+  border: 1px solid #b7e0c8;
+}
+.kids-enabled { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.kids-portal .kids-success,.kids-admin .kids-success { margin-top: .75rem; }
+.kids-alert { margin-top: .75rem; padding: .75rem .85rem; border-radius: .6rem; color: #8a1f2d; background: #fff1f2; border: 1px solid #edbac0; }
+.kids-term { display: grid; gap: .75rem; background: #f4f8fd; border: 1px solid #d9e4f0; border-radius: .65rem; padding: 1rem; }
+.kids-term h4,.kids-checkbox { display: flex; align-items: center; gap: .6rem; font-weight: 700; }
+.kids-term p { white-space: pre-wrap; overflow-wrap: anywhere; }
+.kids-term button { justify-self: start; }
+.kids-checkbox { min-height: 2.75rem; }
+.kids-checkbox input { width: 1.15rem; height: 1.15rem; flex-shrink: 0; }
+.kids-withdraw summary { cursor: pointer; color: #405772; }
+.kids-withdraw p { margin-block: .5rem; }
+.kids-admin-section { margin: 1rem 0; display: grid; gap: .9rem; }
+.kids-actions { display: flex; flex-wrap: wrap; gap: .6rem; }
+
+.kids-space { display: grid; gap: 1.35rem; }
+.kids-hero { display: flex; gap: 1rem 2rem; align-items: center; justify-content: space-between; flex-wrap: wrap; color: #fff; padding: clamp(1.25rem, 5vw, 2.6rem); border-radius: 1.3rem; background: linear-gradient(115deg, #102849, #174a82 67%, #256196); }
+.kids-hero > div:first-child { max-width: 34rem; }
+.kids-hero p { color: #e0edff; }
+.kids-hero p:first-child { display: flex; align-items: center; gap: .4rem; font-weight: 700; }
+.kids-hero h1 { color: #fff; font-size: clamp(2rem, 5vw, 3.25rem); line-height: 1.2; margin: .35rem 0 .55rem; }
+.kids-hero-actions .btn { color: #102849; }
+.kids-activities { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 1rem; }
+.kids-adventure-card { display: grid; gap: 1rem; padding: clamp(.85rem, 3vw, 1.35rem); background: #fff; border: 1px solid #d9e4f0; border-radius: 1rem; color: #102849; }
+.kids-adventure-card > header { display: flex; align-items: center; gap: .65rem; }
+.kids-adventure-card h2 { font-size: clamp(1.2rem, 3vw, 1.6rem); }
+.kids-adventure-card > header p { color: #455d79; font-size: .91rem; }
+.kids-feature-icon { width: 2.75rem; height: 2.75rem; flex: 0 0 auto; border-radius: .75rem; background: #e4effe; color: #194375; display: grid; place-items: center; }
+.kids-feature-game { background: #ffe7bf; color: #744411; }
+.kids-story { overflow: hidden; border: 1px solid #d9e4f0; border-radius: .8rem; }
+.kids-story-body,.kids-game-body { display: grid; gap: .6rem; padding: 1rem; }
+.kids-story-body > h3,.kids-game-body > h3 { font-size: 1.2rem; }
+.kids-reference { color: #215285; font-weight: 800; font-size: .88rem; }
+.kids-story-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .55rem; }
+.kids-story-controls span { color: #455d79; font-size: .875rem; }
+.kids-game-body { border-radius: .8rem; background: #f5f9ff; }
+.kids-game-body > button,.kids-game-finish > button { justify-self: start; }
+.kids-game-choices { display: grid; gap: .55rem; margin: .2rem 0; }
+.kids-game-choices button { display: flex; align-items: center; gap: .6rem; min-height: 2.8rem; padding: .6rem .75rem; border: 1px solid #b9cee6; background: #fff; border-radius: .6rem; text-align: left; }
+.kids-game-choices button:not(:disabled):hover { border-color: #194375; background: #e6f1ff; }
+.kids-game-choices button span { display: grid; place-items: center; width: 1.55rem; height: 1.55rem; flex: 0 0 auto; background: #e9f1fb; border-radius: .35rem; font-size: .82rem; font-weight: 800; }
+.kids-game-choices .kids-choice-correct { background: #e8f8ee; border-color: #71bd93; color: #12543d; }
+.kids-game-choices .kids-choice-incorrect { background: #fff2f2; border-color: #d99ba6; color: #8a1f2d; }
+.kids-game-feedback { padding: .7rem .85rem; background: #e5effa; border-radius: .55rem; }
+.kids-game-finish { display: grid; gap: .55rem; }
+.kids-form :focus-visible,.kids-actions :focus-visible,.kids-withdraw :focus-visible,.kids-adventure-card :focus-visible { outline: 3px solid #2467ad; outline-offset: 3px; }
+
+.kids-illustration { position: relative; aspect-ratio: 2.4; overflow: hidden; isolation: isolate; background: #bde2fb; }
+.kids-illustration span,.kids-illustration span::before,.kids-illustration span::after { position: absolute; display: block; }
+.kids-illustration span::before,.kids-illustration span::after { content: ""; }
+.kids-figure-sky { width: 36%; height: 60%; left: 32%; top: 13%; border-radius: 100% 100% 0 0; border: .6rem solid #e56a73; border-bottom: 0; }
+.kids-figure-sky::before { inset: 0; border-radius: inherit; border: .55rem solid #f6da77; border-bottom: 0; }
+.kids-figure-cloud { width: 20%; height: 12%; top: 24%; left: 11%; background: #f9fdff; border-radius: 2rem; box-shadow: 12rem .8rem 0 -.14rem #f9fdff; }
+.kids-figure-cloud::before { width: 46%; aspect-ratio: 1; top: -58%; left: 29%; background: inherit; border-radius: 80%; }
+.kids-figure-hill { inset: 55% -11% -20% -8%; background: #76ad87; border-radius: 48% 64% 0 0; transform: rotate(-8deg); }
+.kids-figure-hill::after { width: 47%; height: 100%; right: -3%; bottom: 0; border-radius: 60% 48% 0 0; background: #4d937d; transform: rotate(20deg); }
+.kids-figure-water { inset: 69% -3% -20%; background: repeating-linear-gradient(175deg, #72bfdf 0 8px, #8ed1e7 8px 14px, #72bfdf 14px 20px); border-radius: 24% 20% 0 0; }
+.kids-figure-focus { width: 42%; height: 16%; left: 27%; top: 62%; background: #8d4f37; border-radius: 4% 10% 36% 36% / 18% 18% 86% 86%; }
+.kids-figure-focus::before { width: 63%; height: 150%; bottom: 100%; left: 16%; background: #d1955f; border: .16rem solid #8d4f37; border-radius: 36% 36% 0 0; }
+.kids-figure-extra { width: 3.5%; aspect-ratio: 1; border-radius: 50%; background: #ffe69a; left: 40%; top: 49%; box-shadow: 1.2rem 0 0 #ffe69a, 2.4rem 0 0 #ffe69a; }
+.kids-illustration-amanhecer { background: #ffe2a5; }
+.kids-illustration-amanhecer .kids-figure-sky { top: 12%; left: 65%; width: 12%; height: auto; aspect-ratio: 1; background: #f8b852; border: 0; border-radius: 50%; }
+.kids-illustration-amanhecer .kids-figure-sky::before { display: none; }
+.kids-illustration-amanhecer .kids-figure-hill { inset: 44% -10% -20%; background: #92bd77; }
+.kids-illustration-amanhecer .kids-figure-water { inset: 57% 21% 0; border-radius: 0; background: #efd296; clip-path: polygon(45% 0, 60% 0, 100% 100%, 0 100%); }
+.kids-illustration-amanhecer .kids-figure-focus { background: #694d83; width: 6%; height: 32%; left: 46%; top: 43%; border-radius: .55rem .55rem 0 0; }
+.kids-illustration-amanhecer .kids-figure-focus::before { width: 100%; height: auto; aspect-ratio: 1; left: 0; bottom: 86%; border: 0; background: #885335; border-radius: 50%; }
+.kids-illustration-amanhecer .kids-figure-focus::after { width: 230%; height: 17%; top: 13%; left: -65%; border-radius: .3rem; background: #694d83; }
+.kids-illustration-amanhecer .kids-figure-extra { top: 54%; left: 33%; width: 5%; height: 20%; aspect-ratio: auto; border-radius: .3rem .3rem 0 0; background: #a45138; box-shadow: none; }
+.kids-illustration-amanhecer .kids-figure-extra::before { width: 100%; aspect-ratio: 1; border-radius: 50%; bottom: 93%; background: #774928; }
+.kids-illustration-amanhecer .kids-figure-extra::after { width: 100%; height: 135%; top: -35%; left: 465%; border-radius: .8rem .8rem .15rem .15rem; background: linear-gradient(to bottom, #9e6136 0 28%, #1d7884 28%); }
+.kids-illustration-mar { background: #788daa; }
+.kids-illustration-mar .kids-figure-sky { top: 15%; left: 70%; width: 11%; height: 42%; border: 0; border-radius: 0; background: #ffe789; clip-path: polygon(45% 0, 100% 0, 63% 43%, 96% 43%, 12% 100%, 42% 54%, 16% 54%); }
+.kids-illustration-mar .kids-figure-sky::before { display: none; }
+.kids-illustration-mar .kids-figure-cloud { background: #667e9a; box-shadow: 9rem 0 0 -.14rem #667e9a; }
+.kids-illustration-mar .kids-figure-hill { display: none; }
+.kids-illustration-mar .kids-figure-water { inset: 58% -3% -20%; background: repeating-linear-gradient(176deg, #316997 0 9px, #539bc2 9px 15px, #347ba5 15px 20px); }
+.kids-illustration-mar .kids-figure-focus { width: 29%; left: 35%; top: 65%; transform: rotate(-7deg); }
+.kids-illustration-mar .kids-figure-focus::before { width: 61%; height: 240%; left: 28%; background: #f8e9be; border: 0; border-radius: 0; clip-path: polygon(0 0, 100% 100%, 0 100%); }
+.kids-illustration-mar .kids-figure-extra { display: none; }
+
+@media (max-width: 50rem) { .kids-activities { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 33rem) {
+  .kids-invite-form { grid-template-columns: minmax(0, 1fr); }
+  .kids-portal-actions { margin-top: -.75rem; }
+  .kids-story-controls .btn { padding-inline: .6rem; }
+}

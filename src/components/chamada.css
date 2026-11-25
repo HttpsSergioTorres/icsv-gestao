@@ -4,10 +4,10 @@
   gap: .45rem;
   margin-bottom: .75rem;
   padding: .65rem .8rem;
-  border: 1px solid #cfe1d6;
+  border: 1px solid var(--surface-lines);
   border-radius: .5rem;
   color: var(--forest);
-  background: #eef5ef;
+  background: #edf4fc;
   font-size: .9rem;
   font-weight: 750;
 }
@@ -39,7 +39,7 @@
   width: min(100%, 12rem);
   min-height: 2.5rem;
   padding: .4rem .5rem;
-  border: 1px solid #cad8d0;
+  border: 1px solid var(--field-lines);
   border-radius: .45rem;
   color: var(--forest);
   background: #fff;

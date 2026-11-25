@@ -10,6 +10,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: { default: "ICSV Gestão", template: "%s | ICSV Gestão" },
   description: "Gestão da Igreja de Cristo no Brasil — Campo San Vale",
+  icons: { icon: { url: "/marca/icsv-icone.png", sizes: "180x180", type: "image/png" } },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {

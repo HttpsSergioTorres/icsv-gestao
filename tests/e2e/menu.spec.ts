@@ -95,8 +95,6 @@ test("carrega pela navegação os cadastros, a agenda e os relatórios", async (
     ["Escalas", "Escalas de serviço"],
     ["Projetos", "Projetos"],
     ["Tarefas", "Tarefas"],
-    ["Financeiro", "Movimentações"],
-    ["Categorias financeiras", "Categorias financeiras"],
     ["Usuários", "Usuários"],
     ["Perfis de acesso", "Perfis de acesso"],
   ];
@@ -113,7 +111,12 @@ test("carrega pela navegação os cadastros, a agenda e os relatórios", async (
   await expect(conteudo.getByRole("heading", { name: "Atividades", level: 1 })).toBeVisible();
   await expect(conteudo.getByRole("searchbox", { name: "Buscar registros" })).toBeVisible();
 
-  await navegacao.getByRole("link", { name: "Relatórios", exact: true }).click();
+  await navegacao.getByRole("link", { name: "Prestação de contas", exact: true }).click();
+  await expect(conteudo.getByRole("heading", { name: "Prestação de contas", level: 1 })).toBeVisible();
+  await navegacao.getByRole("link", { name: "Cadastros", exact: true }).click();
+  await expect(conteudo.getByRole("heading", { name: "Cadastros", level: 1 })).toBeVisible();
+
+  await navegacao.locator('a[href="/relatorios"]').click();
   await expect(conteudo.getByRole("heading", { name: "Resumo", exact: true })).toBeVisible();
   await navegacao.getByRole("link", { name: "Painel geral", exact: true }).click();
   await expect(conteudo.getByRole("heading", { name: "Painel geral", level: 1 })).toBeVisible();

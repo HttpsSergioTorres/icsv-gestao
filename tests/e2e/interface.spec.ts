@@ -8,6 +8,8 @@ test("autentica pela interface e mantém cadastro após recarregar", async ({ pa
   await page.getByLabel("E-mail").fill(adminEmail);
   await page.getByLabel("Senha", { exact: true }).fill(demoPassword);
   await page.getByRole("button", { name: "Entrar" }).click();
+  await expect(page).toHaveURL(/\/selecionar-perfil$/);
+  await page.getByRole("button", { name: /Administrador geral do campo/ }).click();
 
   const menu = page.getByRole("navigation", { name: "Navegação principal" });
   await expect(menu.getByRole("link", { name: "Painel geral" })).toBeVisible();
@@ -33,11 +35,14 @@ test("oferece navegação móvel e oculta módulos fora do perfil", async ({ pag
   await page.getByLabel("E-mail").fill(secretaryEmail);
   await page.getByLabel("Senha", { exact: true }).fill(demoPassword);
   await page.getByRole("button", { name: "Entrar" }).click();
+  await expect(page).toHaveURL(/\/selecionar-perfil$/);
+  await page.getByRole("button", { name: /Secretaria/ }).click();
 
   await page.getByRole("button", { name: "Abrir menu" }).click();
   const menu = page.getByRole("navigation", { name: "Navegação principal" });
   await expect(menu.getByRole("link", { name: "Pessoas" })).toBeVisible();
-  await expect(menu.getByRole("link", { name: "Financeiro", exact: true })).toHaveCount(0);
+  const financeiro = menu.locator("section").filter({ has: page.getByRole("heading", { name: "Financeiro", exact: true }) });
+  await expect(financeiro.getByRole("link")).toHaveText(["Relatórios"]);
   await menu.getByRole("link", { name: "Pessoas" }).click();
 
   await expect(page).toHaveURL(/\/pessoas$/);

@@ -20,9 +20,7 @@ test("altera a própria senha e encerra as sessões da conta", async ({ request,
   const outraSessao = await playwright.request.newContext({ baseURL });
   try {
     for (const context of [page.request, outraSessao]) {
-      await expect(await context.post("/api/auth/login", {
-        data: { email, password: senhaAtual },
-      })).toBeOK();
+      await login(context, email, senhaAtual);
     }
 
     const alteracaoAdministrativa = await outraSessao.patch(`/api/usuarios/${usuario.id}`, { data: { senha: novaSenha } });
@@ -58,9 +56,7 @@ test("altera a própria senha e encerra as sessões da conta", async ({ request,
     expect((await outraSessao.post("/api/auth/login", {
       data: { email, password: senhaAtual },
     })).status()).toBe(401);
-    await expect(await outraSessao.post("/api/auth/login", {
-      data: { email, password: novaSenha },
-    })).toBeOK();
+    await login(outraSessao, email, novaSenha);
   } finally {
     await outraSessao.dispose();
   }

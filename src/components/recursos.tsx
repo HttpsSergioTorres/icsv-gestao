@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useId, useMemo, useState, type FormEvent } from 'react'
 import { ArrowDownToLine, CalendarDays, CircleHelp, History, KeyRound, Pencil, Plus, Search } from 'lucide-react'
 import { eventTime } from '@/lib/domain/occurrences'
+import { specialProfiles } from '@/lib/domain/access'
 import { protectedAdminProfileId } from '@/lib/domain/resource-names'
 import { resources, type Field, type ResourceName } from '@/lib/domain/resources'
 import { api, downloadCsv, formatDate, formatDateTime, messageOf, money, write, type RecordItem } from './client-api'
@@ -218,12 +219,23 @@ function RegistroEditor({ resource, editor, options, filters, close, finish }: {
   const editableFields = ownAccount
     ? definition.fields.filter((field) => !['senha', 'ativo', 'perfilId', 'congregacaoId'].includes(field.key))
     : definition.fields
-  const fields = resource === 'congregacoes' && create
+  const assignAccess = resource === 'usuarios' && create
+  const fields = assignAccess ? editableFields.filter((field) => !['perfilId', 'congregacaoId'].includes(field.key))
+    : resource === 'congregacoes' && create
     ? editableFields.filter((field) => field.reference !== 'pessoas')
     : editableFields
   const [initial] = useState<FormValues>(() => initialValues(resource, item, filters, user.congregacaoId))
   const [values, setValues] = useState<FormValues>(initial)
-  const referenceValues = resource === 'congregacoes' && item ? { ...values, congregacaoId: item.id } : values
+  const [access, setAccess] = useState<{ congregation: { id: string; nome: string }; profiles: { id: string; nome: string }[] }>()
+  const [selected, setSelected] = useState<string[]>([])
+  useEffect(() => {
+    if (!assignAccess) return
+    const controller = new AbortController()
+    api<{ congregation: { id: string; nome: string }; profiles: { id: string; nome: string }[] }>('/api/auth/access', { signal: controller.signal })
+      .then(setAccess).catch((failure: unknown) => { if (!controller.signal.aborted) setError(messageOf(failure)) })
+    return () => controller.abort()
+  }, [assignAccess])
+  const referenceValues = assignAccess && access ? { ...values, congregacaoId: access.congregation.id } : resource === 'congregacoes' && item ? { ...values, congregacaoId: item.id } : values
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [receipt, setReceipt] = useState<File>()
@@ -240,6 +252,11 @@ function RegistroEditor({ resource, editor, options, filters, close, finish }: {
         || (field.key === 'recorrenciaAte' && initial.recorrencia !== 'nenhuma' && values.recorrencia === 'nenhuma')
       ))
       const payload = editorPayload(resource, changedFields, values, create)
+      if (assignAccess) {
+        if (!access || !selected.length) throw new Error('Selecione pelo menos um perfil de acesso.')
+        payload.congregacaoId = access.congregation.id
+        payload.acessos = selected
+      }
       if (receipt) {
         if (!values.congregacaoId) throw new Error('Selecione a congregação do comprovante.')
         if (receiptUrl && receiptScope === values.congregacaoId) {
@@ -290,6 +307,15 @@ function RegistroEditor({ resource, editor, options, filters, close, finish }: {
         {fields.filter((field) => field.key !== 'recorrenciaAte' || values.recorrencia !== 'nenhuma').map((field) => (
           <FieldInput key={field.key} field={field} value={values[field.key]} options={options} values={referenceValues} create={create} change={(value) => change(field.key, value)} />
         ))}
+        {assignAccess && <fieldset className="permission-picker full-field">
+          <legend>Acessos em {access?.congregation.nome ?? 'ICSV San Vale'}</legend>
+          <div>{access?.profiles.map((profile) => <label key={profile.id}>
+            <input type="checkbox" checked={selected.includes(profile.id)}
+              onChange={(event) => setSelected((previous) => event.target.checked ? [...previous, profile.id] : previous.filter((id) => id !== profile.id))} />{profile.nome}
+          </label>)}</div>
+          {!access && <p>Carregando perfis autorizados…</p>}
+          {access?.profiles.length === 0 && <p>Seu perfil não pode atribuir acessos nesta sede.</p>}
+        </fieldset>}
         {ownAccount && <Link href="/minha-conta" className="text-link full-field"><KeyRound size={15} aria-hidden="true" />Alterar senha em Minha conta</Link>}
         {resource === 'movimentacoes' && <label className="full-field">Anexar comprovante
           <input type="file" accept="application/pdf,image/png,image/jpeg" onChange={(event) => { setReceipt(event.target.files?.[0]); setReceiptUrl(undefined) }} />
@@ -476,7 +502,7 @@ export function Recursos({ resource, initialFilters, initialEdit, startNew }: {
 
   const linkedItem = linkedEdit ? items?.find((item) => item.id === linkedEdit) : undefined
   const canEdit = (item: RecordItem) => canWrite
-    && (resource !== 'perfis' || (item.id !== user.profileId && item.id !== protectedAdminProfileId))
+    && (resource !== 'perfis' || (item.id !== user.profileId && item.id !== protectedAdminProfileId && !(Object.values(specialProfiles) as string[]).includes(item.id)))
   const activeEditor = editor ?? (linkedItem ? { mode: canEdit(linkedItem) ? 'edit' as const : 'view' as const, item: linkedItem } : null)
   const nested = (relationLinks[resource] ?? []).filter((link) => user.permissions[link.resource]?.read)
   const hasFilters = query || Object.values(filters).some(Boolean) || period.from || period.until
@@ -571,6 +597,7 @@ export function Recursos({ resource, initialFilters, initialEdit, startNew }: {
                     {resource === 'usuarios' && permissions.write && !ownUser && item.ativo !== false && <button className="small-action" type="button" onClick={() => setAction({ type: 'recovery', item })}><KeyRound size={14} />Recuperar acesso</button>}
                     {resource === 'escalas' && permissions.write && item.status !== 'substituida' && <button className="small-action" type="button" onClick={() => setAction({ type: 'replace', item })}>Substituir</button>}
                     {resource === 'eventos' && <LinkChamada id={item.id} cancelado={item.status === 'cancelado'} className="small-action" />}
+                    {resource === 'ministerios' && user.grants.some((grant) => grant.startsWith('training:')) && <Link className="small-action" href={`/treinamentos?ministerioId=${item.id}`}>Treinamentos</Link>}
                     {nested.map((link) => <Link className="small-action" key={link.resource} href={queryLink(link.resource, link.key, item.id)}>{link.label}</Link>)}
                   </div></td>
                 </tr>

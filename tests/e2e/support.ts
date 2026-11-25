@@ -16,12 +16,18 @@ type SessionUser = {
   congregacaoId: string | null;
 };
 
-export async function login(request: APIRequestContext, email = adminEmail) {
+export async function login(request: APIRequestContext, email = adminEmail, password = demoPassword) {
   const response = await request.post("/api/auth/login", {
-    data: { email, password: demoPassword },
+    data: { email, password },
   });
   await expect(response).toBeOK();
-  return (await response.json()).user as SessionUser;
+  const choices = await request.get("/api/auth/profile");
+  await expect(choices).toBeOK();
+  const { profiles } = await choices.json() as { profiles: { id: string; nome: string }[] };
+  expect(profiles).toHaveLength(1);
+  const selected = await request.post("/api/auth/profile", { data: { assignmentId: profiles[0].id } });
+  await expect(selected).toBeOK();
+  return (await selected.json()).user as SessionUser;
 }
 
 type Item = Record<string, unknown> & { id: string };
